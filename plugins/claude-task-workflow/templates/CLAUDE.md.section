@@ -1,0 +1,14 @@
+## task-workflow 設定
+
+plugin `claude-task-workflow` 的 skill／agent 會讀這一節。每行一項，沒有的項目寫「無」。
+
+- 主程式檔：`index.html`（單檔網頁，很大，worker 不整份讀）
+- 版本日期標記：頁尾「最後更新日期」，格式 `YYYY/MM/DD`
+- 部署網址：https://<user>.github.io/<repo>/（`main` 自動部署）
+- 語法檢查：plugin `tools/check-js.sh index.html`
+- release 閘門：plugin `tools/release-check.sh`（跑 `npm test`）
+- 舊存檔相容：localStorage key `<key>`；基準版用 `../dev/index.html` 載入範例 `<範例 id>` 後呼叫 `saveState()` 取得
+- 資料慣例：<例如：格子資料用「欄名|列字母」當 key；與主陣列平行的陣列新增時要同步哪些函式；範例資料常數名>
+- 回歸必查功能：<例如：載入範例、畫箭頭、匯出 PPTX 不拋例外>
+- 參考資料索引：`doc/reference/README.md`；掃描 PDF 頁碼對照：<PDF 第 n 頁＝書 S(偏移+n)>
+- 自測腳本目錄：`tools/selftest/<代號>.mjs`
