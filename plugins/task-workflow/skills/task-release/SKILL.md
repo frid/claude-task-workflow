@@ -106,7 +106,7 @@ git log --oneline -1
 ```
 
 - 互動模式先給使用者看 `git log --oneline dev..<branch>` 再合。
-- 合併後跑一次語法檢查：`"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/claude-task-workflow/plugins/claude-task-workflow}/tools/check-js.sh" <主程式檔>`。
+- 合併後跑一次語法檢查：`"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/claude-task-workflow/plugins/task-workflow}/tools/check-js.sh" <主程式檔>`。
 - 合併後 worktree 與分支先留著，使用者說「清 worktree」才刪：`git worktree remove <path> && git branch -d <branch> && git push origin --delete <branch>`。
 - `dev` 不會部署。
 

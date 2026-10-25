@@ -14,7 +14,7 @@ tools: Bash, Read, Grep, Glob
 
 ## 標準四項檢查（每次都做）
 1. **範圍**：`git status --short`、`git diff --stat`。改動只能在 worker 聲稱的檔案；`TODO.md` 的 `[~]` 是主 session 改的，正常。
-2. **語法**：`"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/claude-task-workflow/plugins/claude-task-workflow}/tools/check-js.sh" <主程式檔>`（若不存在：python 抽出所有非 src 的 `<script>` 內容，用 `\n;\n` 接起，`node --check`）。非單檔 HTML 專案用設定指定的指令。有錯 → FAIL。
+2. **語法**：`"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/claude-task-workflow/plugins/task-workflow}/tools/check-js.sh" <主程式檔>`（若不存在：python 抽出所有非 src 的 `<script>` 內容，用 `\n;\n` 接起，`node --check`）。非單檔 HTML 專案用設定指定的指令。有錯 → FAIL。
 3. **舊存檔相容**：依設定的方式，用基準版（通常是 `../dev/<主程式檔>`，或 prompt 指定）載入範例、取得舊存檔，塞進受測版 reload。要求：無 `pageerror`／`console.error`、畫面正常渲染、新欄位為預設值。`tests/fixtures/*.json` 若存在也逐一載入。
 4. **截圖與回歸**：headless Chrome 截新功能畫面（有互動才看得到的，用 CDP 操作後再截；`--headless=new`；1400 寬，必要時加 800 寬），**用 Read 看圖**確認新功能出現、版面沒壞、沒有橫向爆版。回歸：設定列出的既有關鍵功能仍正常、匯出不拋例外。
 

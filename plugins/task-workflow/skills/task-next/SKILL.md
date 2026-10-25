@@ -146,7 +146,7 @@ verifier 回報後，主 session **自己 Read 一張關鍵截圖**確認。
 驗證後若只做小修，主 session 至少自己跑一次語法檢查再收尾：
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/claude-task-workflow/plugins/claude-task-workflow}/tools/check-js.sh" <主程式檔>
+"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/claude-task-workflow/plugins/task-workflow}/tools/check-js.sh" <主程式檔>
 ```
 
 ---

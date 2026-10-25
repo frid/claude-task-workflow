@@ -1,6 +1,6 @@
 ## task-workflow 設定
 
-plugin `claude-task-workflow` 的 skill／agent 會讀這一節。每行一項，沒有的項目寫「無」。
+plugin `task-workflow` 的 skill／agent 會讀這一節。每行一項，沒有的項目寫「無」。
 
 - 主程式檔：`index.html`（單檔網頁，很大，worker 不整份讀）
 - 版本日期標記：頁尾「最後更新日期」，格式 `YYYY/MM/DD`

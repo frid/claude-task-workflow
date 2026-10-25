@@ -5,11 +5,11 @@
   "owner": { "name": "Frid Hou" },
   "plugins": [
     {
-      "name": "claude-task-workflow",
+      "name": "task-workflow",
       "description": "TODO.md 驅動的開發流程：一次一項、先規劃再派 worker subagent 改檔、另派 verifier 驗證、task-release 收尾；三層分支 worktree→dev→main。",
       "author": { "name": "Frid Hou" },
       "category": "development",
-      "source": "./plugins/claude-task-workflow",
+      "source": "./plugins/task-workflow",
       "homepage": "https://github.com/frid/claude-task-workflow"
     }
   ]

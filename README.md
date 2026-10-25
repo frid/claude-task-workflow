@@ -1,6 +1,6 @@
 # claude-task-workflow
 
-Claude Code plugin：TODO.md 驅動的開發流程。一次一項、先規劃再派 worker subagent 改檔、另派 verifier 驗證、`task-release` 收尾；三層分支 `worktree → dev → main`。從 strategy-matrix 專案的流程抽出，專案專屬內容改由各專案 `CLAUDE.md` 提供。
+Claude Code plugin `task-workflow`：TODO.md 驅動的開發流程。一次一項、先規劃再派 worker subagent 改檔、另派 verifier 驗證、`task-release` 收尾；三層分支 `worktree → dev → main`。從 strategy-matrix 專案的流程抽出，專案專屬內容改由各專案 `CLAUDE.md` 提供。
 
 ## 內容
 
@@ -18,7 +18,7 @@ Claude Code plugin：TODO.md 驅動的開發流程。一次一項、先規劃再
 
 ```
 /plugin marketplace add frid/claude-task-workflow
-/plugin install claude-task-workflow@claude-task-workflow
+/plugin install task-workflow@claude-task-workflow
 ```
 
 或在專案 `.claude/settings.json` 宣告，讓每位協作者開專案就自動帶入：
@@ -28,7 +28,7 @@ Claude Code plugin：TODO.md 驅動的開發流程。一次一項、先規劃再
   "extraKnownMarketplaces": {
     "claude-task-workflow": { "source": { "source": "github", "repo": "frid/claude-task-workflow" } }
   },
-  "enabledPlugins": { "claude-task-workflow@claude-task-workflow": true }
+  "enabledPlugins": { "task-workflow@claude-task-workflow": true }
 }
 ```
 
@@ -41,7 +41,7 @@ Claude Code plugin：TODO.md 驅動的開發流程。一次一項、先規劃再
 
 ## 更新流程
 
-改 skill／agent 後把 `plugins/claude-task-workflow/.claude-plugin/plugin.json` 的 `version` 加一，commit、push；各專案 `/plugin update claude-task-workflow` 即同步。
+改 skill／agent 後把 `plugins/task-workflow/.claude-plugin/plugin.json` 的 `version` 加一，commit、push；各專案 `/plugin update task-workflow` 即同步。
 
 ## 版本
 

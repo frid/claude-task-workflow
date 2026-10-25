@@ -20,7 +20,7 @@ model: haiku
 - 不做 prompt 沒要求的改動；發現別的問題只回報、不順手修。
 
 ## 自測
-- 改完跑語法檢查：`"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/claude-task-workflow/plugins/claude-task-workflow}/tools/check-js.sh" <主程式檔>`（單檔 HTML 專案）；其他專案用設定裡指定的指令。
+- 改完跑語法檢查：`"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/claude-task-workflow/plugins/task-workflow}/tools/check-js.sh" <主程式檔>`（單檔 HTML 專案）；其他專案用設定裡指定的指令。
 - 若改到畫面，用 headless Chrome 截一張圖放 `$CLAUDE_JOB_DIR/tmp/`。
 
 ## 回報格式（繁體中文，簡短）
