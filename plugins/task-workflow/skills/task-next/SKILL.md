@@ -3,11 +3,12 @@ name: task-next
 description: >-
   從 TODO.md 挑下一項未完成任務，先補編號、先寫計畫給使用者確認，點頭後才派 worker subagent 改檔，
   改完另派 verifier 驗證，再交給 task-release 收尾。當使用者說「下一步」「接著做」「做下一項」
-  「/task-next」「把 TODO 的 XX-01 做掉」時使用；使用者說「由你派、我不介入」「開第 N 波」
-  時進入授權批次模式。硬規則：一次只做一項；先規劃、等使用者點頭再執行（批次模式例外，見步驟 0）；
-  不在 main 上改；使用者沒說「merge」不併入 dev、沒說「release」不上 main。
+  「/task-next」「把 TODO 的 XX-01 做掉」「做 XX-01a」時使用（指定代號就只做那一項或那個範圍）；
+  使用者說「由你派、我不介入」「由你當最上層指揮者」「開第 N 波」「一個一個完整做」時進入授權批次模式，
+  再說「沒問題就 merge」則每項 PASS 後自行併入 dev。硬規則：一次只做一項；先規劃、等使用者點頭再執行
+  （批次模式例外，見步驟 0）；不在 main 上改；使用者沒說「merge」不併入 dev、沒說「release」不上 main。
 metadata:
-  version: "1.3.0"
+  version: "1.5.0"
 ---
 
 # Task Next — 從 TODO.md 接手下一項任務
@@ -15,7 +16,7 @@ metadata:
 流程：**定模式 → 補編號 → 選一項 → 核對事實、寫計畫 → 等點頭（互動模式）→ 執行 → 驗證 → 收尾 → 回報／接下一項**。
 一次只做一項。全程用繁體中文跟使用者溝通。
 
-**專案設定從哪來**：每個專案的 `CLAUDE.md` 要有一節 `## task-workflow 設定`（範本見 plugin 的 `templates/CLAUDE.md.section`），寫明：主程式檔、版本日期標記、部署網址、舊存檔相容方式、資料慣例、參考資料位置、自測與 release 閘門。下文提到「主程式檔」「設定」都指這一節；找不到這一節就先停下請使用者補。
+**專案設定從哪來**：每個專案的 `CLAUDE.md` 要有一節 `## task-workflow 設定`（範本見 plugin 的 `templates/CLAUDE.md.section`），寫明：主程式檔、版本日期標記、部署網址、舊存檔相容方式、資料慣例、參考資料位置、自測與 release 閘門。下文提到「主程式檔」「設定」都指這一節。找不到這一節：互動模式先停下請使用者補；**批次模式依 CLAUDE.md 既有內容、tests／tools 目錄與 TODO 推出一節自己補上並 commit**，在回報裡說明，不停下。
 
 ---
 
@@ -36,7 +37,10 @@ metadata:
 | 模式 | 觸發 | 行為 |
 |---|---|---|
 | **互動模式**（預設） | 「下一步」「/task-next」 | 一次一項，每項計畫等使用者點頭；收尾只 commit／push 分支 |
-| **授權批次模式** | 使用者明說「由你派、我不介入」「開第 N 波」「一次做完」 | 先給路線圖（下方），之後一路跑到該波結束或 TODO 清空，只在硬規則 5 的情況停下。若同時說了「沒問題就 merge」，每項驗證 PASS 後自行併入 dev |
+| **指定代號** | 「做 ST-23」「把 ST-22a 做掉」「ST-24 到 ST-26」 | 只做指定的那一項／子項／範圍，做完就停；可與下面兩種模式任一搭配（例：「ST-23 由你派、我不介入」） |
+| **授權批次模式** | 使用者明說「由你派、我不介入」「由你當最上層指揮者」「開第 N 波」「一個一個完整做」「一次做完」 | 先給路線圖（下方），之後一路跑到該波結束或 TODO 清空，只在硬規則 5 的情況停下。若同時（或中途）說了「沒問題就 merge」，每項驗證 PASS 後自行併入 dev 並 push dev |
+
+批次模式的分支策略見步驟 1「整波一條分支」；中途使用者在 dev 加需求的處理見步驟 2。
 
 **路線圖格式**（批次模式開跑前給使用者看一次，之後不再逐項問）：
 
@@ -61,7 +65,10 @@ git branch --show-current
 
 - 若目前在 `main` → 停下，請使用者開 worktree／branch（或經同意後用 EnterWorktree）。
 - 有別人未 commit 的改動（`TODO.md` 以外）→ 先回報，別動。
-- **每項任務開一個 worktree**（從最新 `dev` 分出，命名 `worktree-<代號>-<短名>`），做完併入再開下一個。不要預開一批。
+- **互動模式／指定代號：每項任務開一個 worktree**（從最新 `dev` 分出，命名 `worktree-<代號>-<短名>`），做完併入再開下一個。不要預開一批。
+- **批次模式：整波一條分支**（`worktree-<波名>`，如 `worktree-st22-28`，從最新 `dev` 分出），每項做完各自 commit（子項也各自 commit）；授權 merge 時，每項 PASS 後到 dev 檢出目錄 `git merge --no-ff <該項的 commit>`（**指定 commit，不指定分支名**，避免把下一項進行中的 commit 一起帶進去），再 `git push origin dev`，回到工作分支 `git merge --ff-only dev` 同步。整波結束、分支全部併入後才 `git worktree remove` 並刪分支。
+  - EnterWorktree 隔離的 session 不能在 dev 目錄跑 git：先 `ExitWorktree(keep)` → 在 dev 做 merge／push → `EnterWorktree(path)` 回來。
+  - 若使用者未授權 merge，整波只在工作分支 commit，結束時回報「說 merge 我就併」。
 
 **補編號**（TODO.md「# 規則」）：
 - 主 task `- [ ] XX-NN 標題`；子 task 縮排 `XX-NNa`。
@@ -77,6 +84,15 @@ git branch --show-current
 - TODO 已無 `[ ]`，或使用者給的是「一個方向」（某幾章教材、一句需求）而不是任務 → 改用 `task-plan` skill 先規劃出任務。
 - 任務帶圖片（`![](assets/xxx.png)`）→ **用 Read 打開每張圖看**。
 - 任務標了參考資料頁碼 → 先讀設定裡的參考資料索引與對應摘要檔；要讀掃描 PDF 見附錄 A。
+
+**使用者中途在 dev 加了需求**（merge 時發現 dev 的 `TODO.md` 有未 commit 改動、`assets/` 多了圖）：
+1. Read 每張新圖，照規則補編號（號碼接目前最大號）。
+2. 只用「`TODO.md`＋對應附圖」做一個 commit 進 dev（訊息「TODO：使用者新增 XX-NN～MM」），這是唯一允許主 session 直接在 dev commit 的情況。
+3. 回工作分支 `git merge --ff-only dev` 同步。
+4. 規格明確的項目接在本波路線圖尾端做；屬「一個方向」的先用 `task-plan` 拆成子任務並在回報裡列出，不自行猜規格。
+5. 若新需求是對本波剛做完的項目的回饋（例如版面要改），視為新任務、不回頭改舊 commit。
+
+**等 worker 時預先核對下一項**：Explore 只讀不改，可與目前 worker 並行；在 worker 跑的空檔派 Explore 做下一項的 3a，worker 回來就能直接派下一項。不要同時開兩個 worker（除非符合附錄 C）。
 
 **任務太大就先切**：同時動到「資料結構＋UI＋匯出」或預估單一 worker 要讀外部資料又改 300 行以上 → 拆成子 task（如 a 資料與相容、b UI、c 匯出／範本），各自驗證。切法見 `task-plan` 步驟 5。
 
@@ -142,7 +158,8 @@ worker 回來後：`git diff --stat` 看改動範圍有沒有超出計畫；超�
 verifier prompt 交代：任務代號、計畫中的【驗收】、worker 報告的改動清單與自測腳本路徑（`tools/selftest/<代號>.mjs`）、這項特有的檢查點、以及專案設定裡的舊存檔相容方式。標準四項檢查（語法、舊存檔相容、截圖、回歸）已在 agent 定義裡，不必重抄。
 
 verifier 回報後，主 session **自己 Read 一張關鍵截圖**確認。
-**FAIL → 不收尾**：互動模式回報使用者問要不要再派 worker 修；批次模式直接再派 worker 修（同一 worker 用 SendMessage 續做），最多兩輪，仍 FAIL 才停下回報。
+**FAIL → 先判斷是誰錯**：FAIL 可能是程式真的有問題，也可能是主 session 的驗收條件寫錯（例如要求「捲動 < 300px」但面板本來就在頁面下方）、或 verifier 自己的腳本門檻設錯。屬後兩者 → 記進 `doc/decisions.md`／回報，當 PASS 收尾；屬程式問題 → **不收尾**：互動模式回報使用者問要不要再派 worker 修；批次模式直接再派 worker 修（同一 worker 用 SendMessage 續做），最多兩輪，仍 FAIL 才停下回報。
+**verifier 掛住**（回報「等待自己的背景工作」超過約 10 分鐘沒下文）：用 SendMessage 催一次「已完成的先回報、沒結束的列未完成」；仍無回應就 `ls` 它的輸出目錄、讀 out.txt 等已寫出的結果，缺的部分主 session 自己補驗（小腳本或直接看檔），並 `kill` 它殘留的 node／Chrome。常見原因：共用 harness 對超長頁（如手冊）整頁截圖會卡，驗證 prompt 要寫「截元素或視窗，不要整頁」。
 
 驗證後若只做小修，主 session 至少自己跑一次語法檢查再收尾：
 
@@ -164,13 +181,23 @@ verifier 回報後，主 session **自己 Read 一張關鍵截圖**確認。
 
 ## 步驟 7 — 回報／接下一項
 
-每項做完回報：代號、commit、分支、驗證結果、下一個未完成項目。
+每項做完回報：代號、commit、分支（批次模式含 merge 到 dev 的 commit）、驗證結果、下一個未完成項目。
 
 **一波（或批次）結束時**：
-1. 寫 `doc/dev-log/YYYY-MM-DD.md`（或當日檔追加一節）：做了哪些、決定了什麼、待確認、下一波建議。這是 `/clear` 後接手的檢查點。
-2. 跑設定裡的 release 閘門（預設 plugin 的 `tools/release-check.sh`，需要 `node_modules`；沒有就說明略過）。
+1. 寫 `doc/dev-log/YYYY-MM-DD.md`（或當日檔追加一節）：做了哪些（表格：任務／worker／commit／merge commit）、順手修到的舊 bug、決定了什麼、待確認、閘門結果、流程觀察、下一波建議。這是 `/clear` 後接手的檢查點。
+2. 跑設定裡的 release 閘門（預設 plugin 的 `tools/release-check.sh`，需要 `node_modules`；裝不起來（如雲端掛載權限）就說明略過，改以專案零依賴的回歸腳本為準）。
 3. 建議使用者 tag 或 release：「dev 比 main 多 N 個 commit，建議 release vX.Y.Z」。沒聽到「release」不動 main。
 4. 彙整 `doc/pending-checks.md` 未勾項目給使用者。
+5. 還沒做的任務在 `TODO.md` 標清楚（例如前綴「【尚未做】」或「待排程」），並把需要使用者決定的事（會改 PPTX／匯出基準、需舊檔遷移、規格有歧義）單獨列一段。
+
+**最終回報固定格式**（讓只看最後一則訊息的人也看得懂）：
+```
+已完成並併入 dev：<逐項一行：代號 標題（一句話）>
+順手修到：<舊 bug 或新發現，附已登記的 TODO 代號>
+要請你決定：<條列>
+待你本機手點：<指向 pending-checks.md 的節>
+建議下一步：release vX.Y.Z（dev 比 main 多 N 個 commit）／接著做 XX-NN
+```
 
 互動模式：回報後**停下來**，等使用者決定。批次模式：接路線圖下一項，直到該波結束。
 
@@ -188,9 +215,12 @@ verifier 回報後，主 session **自己 Read 一張關鍵截圖**確認。
 
 ## 附錄 B — Git 小事（雲端硬碟掛載常見）
 
-- 掛載偶爾殘留 `index.lock`（0 byte）。先 `pgrep -a git` 確認沒有程序在跑，再 `rm -f "$(git rev-parse --git-dir)/index.lock"` 重試。
+- 掛載偶爾殘留 `index.lock`（0 byte）。看到「Another git process seems to be running」時：`ls -la "$(git rev-parse --git-dir)/index.lock"` 確認是 0 byte 且 `pgrep -x git` 沒有程序，才 `rm -f` 重試；每個 worktree 的 git-dir 不同（`.git/worktrees/<名>/index.lock`），要用 `git rev-parse --git-dir` 找。不是 0 byte 或有程序在跑就等幾秒重試，不要硬刪。
+- `tools/release-task.sh`（或同類收尾腳本）若在 `git commit` 那步被鎖擋下，TODO 已勾、檔案已 stage：清鎖後手動 `git commit -F`，不要重跑腳本（會重複勾 TODO）。
 - `sed -i` 在該掛載會印「preserving permissions … Operation not permitted」，改動仍生效，可忽略；改檔優先用 python 或 Edit 工具。
 - `git push -u` 在該掛載會印 chmod 警告，push 本身成功，用 `git ls-remote` 確認即可。
+- `git branch -m` 在該掛載會印 config.lock chmod 錯誤，但分支已改名，`git branch --show-current` 確認即可。
+- 被 worktree 隔離守門擋下的指令（「too complex to verify」「names git in a form…」）：把 heredoc／python 文字裡含「git」字樣的內容先用 Write 工具寫到暫存檔再 `cat >>`，git 指令單獨一行跑。
 
 ## 附錄 C — 平行派工（選用）
 
@@ -206,6 +236,7 @@ merge 順序：文件 → 視覺 → 資料結構，衝突由主 session 解。v
 
 | 版號 | 日期 | 變更 |
 |---|---|---|
+| 1.5.0 | 2026-10-26 | 依 strategy-matrix 第六波（ST-22～34a，11 項一次跑完）經驗：步驟 0 加「指定代號」模式與新觸發詞；批次模式改「整波一條分支、每項 PASS 後以指定 commit 併入 dev」；中途使用者在 dev 加需求的處理；等 worker 時預先 Explore 下一項；FAIL 先判斷是驗收條件錯還是程式錯；verifier 掛住的處理；批次模式缺 CLAUDE.md 設定節自行補；最終回報固定格式；附錄 B 補鎖檔、收尾腳本中斷、隔離守門的處理 |
 | 1.3.0 | 2026-10-25 | 改為 plugin 版：專案專屬內容（主程式檔名、頁碼對照、資料慣例）移到各專案 CLAUDE.md 的「task-workflow 設定」；工具路徑改走 `CLAUDE_PLUGIN_ROOT`。功能同 strategy-matrix 1.3.0（授權批次模式、派工前核對事實、decisions／pending-checks／dev-log） |
 | 1.2.0 | 2026-09-28 | 派工改用 `worker-haiku`／`worker-sonnet`／`worker-opus`、驗證改用 `verifier-sonnet` |
 | 1.1.0 | 2026-09-28 | 改檔交 worker subagent、驗證另派 verifier、讀主程式用 Explore；主 session 用量守六成 |

@@ -46,5 +46,6 @@ Claude Code plugin `task-workflow`：TODO.md 驅動的開發流程。`task-plan`
 
 ## 版本
 
+- 1.5.0（2026-10-26）：`task-next` 依實戰調整——指定代號模式；批次模式整波一條分支、每項 PASS 後以指定 commit 併入 dev；中途新增需求處理；等 worker 時預先 Explore；FAIL 先判斷驗收條件是否寫錯；verifier 掛住處理；最終回報固定格式；附錄 B 補鎖檔與守門處理。
 - 1.4.0（2026-10-26）：新增 `task-plan` skill（規劃流程：盤點 → 找資料 → 摘要 → 差距表 → 切任務 → 寫 TODO）。
 - 1.3.0（2026-10-25）：首版 plugin，功能對應 strategy-matrix 流程 1.3.0。
