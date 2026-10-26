@@ -20,6 +20,11 @@ model: opus
 - 範例資料若受影響要一併補。
 - 要讀掃描 PDF：`Read` 讀不到文字，先 `gs -sDEVICE=png16m -r110 -dFirstPage=<n> -dLastPage=<m> -o "$CLAUDE_JOB_DIR/tmp/<前綴>-%02d.png" <pdf>` 轉圖再 Read。頁碼對照看設定或參考資料索引，仍以頁面印的頁號為準。摘要用自己的話、標頁碼，寫進參考資料目錄並在索引登記；來源沒有的名詞或分類要註明「工具自訂」。
 
+## Bash 指令規則（worktree 隔離守門）
+- **每次 Bash 呼叫只送一個簡單指令**：不要用 `&&`、`;`、`|` 把 cd／git／heredoc 串成一長串。隔離守門會把長串或含「git」字樣的 heredoc 判成「too complex to verify」整個擋下，重送更花時間。
+- 多步驟就拆成多次呼叫；需要寫檔用 Write／Edit 工具，不用 `cat <<EOF`。
+- git 指令單獨一行、不帶管線；看到「Another git process seems to be running」或 dubious ownership 時不要自己 rm 或改 config，回報主 session（plugin 的 PreToolUse 守護會處理殘留 lock）。
+
 ## 禁止
 - 不 commit、不 push。
 - 不改 `TODO.md`、不改主程式檔的版本日期標記（收尾由主 session 做）。

@@ -1,0 +1,28 @@
+{
+  "description": "task-workflow 環境醫生：SessionStart 跑 doctor --check（a～f 全項）；Bash 含 git 的指令前跑輕量 lock／ownership 守護。",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/tools/doctor.sh\" --check --hook --no-fetch",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/git-guard.sh\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}
