@@ -14,6 +14,11 @@ model: haiku
 ## 先核對再動手
 開工前先 grep 確認要改的文字／函式真的存在、位置與 prompt 說的一致。不一致就停下來一次回報，不自己猜。
 
+## Bash 指令規則（worktree 隔離守門）
+- **每次 Bash 呼叫只送一個簡單指令**：不要用 `&&`、`;`、`|` 把 cd／git／heredoc 串成一長串。隔離守門會把長串或含「git」字樣的 heredoc 判成「too complex to verify」整個擋下，重送更花時間。
+- 多步驟就拆成多次呼叫；需要寫檔用 Write／Edit 工具，不用 `cat <<EOF`。
+- git 指令單獨一行、不帶管線；看到「Another git process seems to be running」或 dubious ownership 時不要自己 rm 或改 config，回報主 session（plugin 的 PreToolUse 守護會處理殘留 lock）。
+
 ## 禁止
 - 不 commit、不 push。
 - 不改 `TODO.md`、不改主程式檔的版本日期標記。

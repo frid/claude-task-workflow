@@ -8,10 +8,12 @@ Claude Code plugin `task-workflow`：TODO.md 驅動的開發流程。`task-plan`
 |---|---|---|
 | skill | `task-plan` | 規劃：從教材／需求盤點現況、登記並摘要參考資料（標頁碼）、做差距表、切階段與子任務、寫進 TODO.md |
 | skill | `task-next` | 接下一項任務：補編號、核對事實、寫計畫、派 worker、派 verifier |
+| skill | `task-explore` | 探索：一個 UI 任務列 3–4 種變體，各自 worktree 做最小版，截圖量測、並排比較頁，使用者選定後交 task-next |
 | skill | `task-release` | 收尾：勾 TODO、更新日期標記、decisions／pending-checks、commit、push；merge／release 步驟 |
 | agent | `worker-haiku` / `worker-sonnet` / `worker-opus` | 改檔的 worker，依任務輕重選模型 |
 | agent | `verifier-sonnet` | 獨立驗證，不改檔 |
 | tool | `tools/check-js.sh` | 單檔 HTML 抽 `<script>` 跑 `node --check` |
+| tool | `tools/explore-shots.mjs` | task-explore 用：每變體截 1440／375、量溢出／對比／元素數，產 variants.html |
 | tool | `tools/release-check.sh` | release 閘門：`npm test` |
 | templates | `templates/` | 新專案起手：CLAUDE.md 設定段、TODO.md、doc 骨架 |
 
@@ -46,6 +48,7 @@ Claude Code plugin `task-workflow`：TODO.md 驅動的開發流程。`task-plan`
 
 ## 版本
 
+- 1.6.0（2026-10-26）：新增 `task-explore` skill 與 `tools/explore-shots.mjs`（UI 任務多變體探索：每變體一個 explore/<代號>-<字母> worktree、截圖量測、並排比較頁、選定後交 task-next）。
 - 1.5.0（2026-10-26）：`task-next` 依實戰調整——指定代號模式；批次模式整波一條分支、每項 PASS 後以指定 commit 併入 dev；中途新增需求處理；等 worker 時預先 Explore；FAIL 先判斷驗收條件是否寫錯；verifier 掛住處理；最終回報固定格式；附錄 B 補鎖檔與守門處理。
 - 1.4.0（2026-10-26）：新增 `task-plan` skill（規劃流程：盤點 → 找資料 → 摘要 → 差距表 → 切任務 → 寫 TODO）。
 - 1.3.0（2026-10-25）：首版 plugin，功能對應 strategy-matrix 流程 1.3.0。
