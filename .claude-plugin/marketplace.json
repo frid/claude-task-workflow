@@ -1,12 +1,12 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "claude-task-workflow",
-  "description": "frid 的 TODO 驅動開發流程：task-next／task-release skill、worker／verifier agent、JS 語法與 release 閘門腳本",
+  "description": "frid 的 TODO 驅動開發流程：task-plan／task-next／task-release skill、worker／verifier agent、JS 語法與 release 閘門腳本",
   "owner": { "name": "Frid Hou" },
   "plugins": [
     {
       "name": "task-workflow",
-      "description": "TODO.md 驅動的開發流程：一次一項、先規劃再派 worker subagent 改檔、另派 verifier 驗證、task-release 收尾；三層分支 worktree→dev→main。",
+      "description": "TODO.md 驅動的開發流程：task-plan 從教材規劃出任務；一次一項、先規劃再派 worker subagent 改檔、另派 verifier 驗證、task-release 收尾；三層分支 worktree→dev→main。",
       "author": { "name": "Frid Hou" },
       "category": "development",
       "source": "./plugins/task-workflow",

@@ -1,7 +1,7 @@
 {
   "name": "task-workflow",
-  "version": "1.3.0",
-  "description": "TODO.md 驅動的開發流程：task-next／task-release skill、worker-haiku／sonnet／opus 與 verifier-sonnet agent、check-js.sh 與 release-check.sh。",
+  "version": "1.4.0",
+  "description": "TODO.md 驅動的開發流程：task-plan／task-next／task-release skill、worker-haiku／sonnet／opus 與 verifier-sonnet agent、check-js.sh 與 release-check.sh。",
   "author": { "name": "Frid Hou" },
   "homepage": "https://github.com/frid/claude-task-workflow",
   "keywords": ["workflow", "todo", "subagent", "worktree"]
