@@ -36,12 +36,13 @@ const METRIC = focus => `(()=>{
   const roots=focusSel? [...document.querySelectorAll(focusSel)] : [document.body];
   const lum=c=>{const m=c.match(/[\\d.]+/g);if(!m)return null;const [r,g,b]=m.map(Number);const a=m[3]==null?1:Number(m[3]);if(a===0)return null;
     const f=v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)};return 0.2126*f(r)+0.7152*f(g)+0.0722*f(b)};
-  const bgOf=el=>{let e=el;while(e){const c=getComputedStyle(e).backgroundColor;const l=lum(c);if(l!=null)return l;e=e.parentElement;}return 1;};
+  // 背景：先看 backgroundColor，透明時改看 backgroundImage 漸層的第一個色（單元多用漸層底）
+  const bgOf=el=>{let e=el;while(e){const cs=getComputedStyle(e);let l=lum(cs.backgroundColor);if(l==null&&cs.backgroundImage&&cs.backgroundImage!=='none'){const m=cs.backgroundImage.match(/rgba?\([^)]*\)/);if(m)l=lum(m[0]);}if(l!=null)return l;e=e.parentElement;}return 1;};
   let nodes=0, overflowEls=0, minC=99, low=0, textEls=0;
   for(const root of roots){
     const all=[root,...root.querySelectorAll('*')]; nodes+=all.length;
     for(const el of all){
-      const cs=getComputedStyle(el); if(cs.display==='none'||cs.visibility==='hidden') continue;
+      const cs=getComputedStyle(el); if(cs.display==='none'||cs.visibility==='hidden'||+cs.opacity<0.5||!el.offsetWidth) continue; // hover 才顯示的淡化元素不算
       if(el.scrollWidth>el.clientWidth+1 && cs.overflowX!=='visible' && cs.overflowX!=='auto' && cs.overflowX!=='scroll') overflowEls++;
       const own=[...el.childNodes].some(n=>n.nodeType===3&&n.textContent.trim()) || (el.matches('input,textarea')&&el.value);
       if(!own) continue;
