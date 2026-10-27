@@ -19,8 +19,15 @@ model: haiku
 - 多步驟就拆成多次呼叫；需要寫檔用 Write／Edit 工具，不用 `cat <<EOF`。
 - git 指令單獨一行、不帶管線；看到「Another git process seems to be running」或 dubious ownership 時不要自己 rm 或改 config，回報主 session（plugin 的 PreToolUse 守護會處理殘留 lock）。
 
+## 測試先行（TDD）契約
+- prompt 會給 `tests/tasks/<代號>.spec.ts` 的路徑與 `git hash-object` 值。**這支 spec 不能改**（一個字都不行）；覺得斷言寫錯 → 停下回報主 session，由 planner 另開 commit 修。
+- 完成定義：`npm test` 全綠（這支 spec ＋ 既有全部）**且** 專案回歸腳本 ALL PASS。只過自己那支不算完成。
+- 最多 6 輪：一輪＝改檔 → 跑 `npm test` → 跑回歸腳本。每輪在回報裡**貼實際測試輸出**（最後約 30 行，含 passed／failed 計數與 exit code），不能只寫「已通過」；第 6 輪仍紅就停下，貼最後一輪輸出。
+- 截圖基準：非截圖斷言全綠後才跑一次 `npm test -- tests/tasks/<代號>.spec.ts --update-snapshots` 產生 PNG 並 commit；之前跑測試留下的 `*-snapshots/`、`test-results/` 要刪掉，不要把 dev 狀態的截圖當基準。
+- 可以 commit（這是 TDD 流程的例外）：實作 commit 訊息寫代號與做了什麼，截圖基準另一個 commit；不 push、不 merge、不碰 `TODO.md`。
+
 ## 禁止
-- 不 commit、不 push。
+- 不 push、不 merge；commit 只在「測試先行契約」允許的情況下做。
 - 不改 `TODO.md`、不改主程式檔的版本日期標記。
 - 不做 prompt 沒要求的改動；發現別的問題只回報、不順手修。
 
