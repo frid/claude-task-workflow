@@ -9,7 +9,7 @@ description: >-
   再說「沒問題就 merge」則每項 PASS 後自行併入 dev。硬規則：一次只做一項；先規劃、等使用者點頭再執行
   （批次模式例外，見步驟 0）；不在 main 上改；使用者沒說「merge」不併入 dev、沒說「release」不上 main。
 metadata:
-  version: "1.7.0"
+  version: "1.7.1"
 ---
 
 # Task Next — 從 TODO.md 接手下一項任務
@@ -197,6 +197,7 @@ verifier 回報後，主 session **自己 Read 一張關鍵截圖**確認。
 
 呼叫 `task-release` skill：TODO.md 標 `[x]`＋完成摘要（含「新增 N 個 test、worker N 輪」）、版本日期標記、commit、push 分支；批次模式含 merge 到 dev。
 **併入 dev 只用 fast-forward**：先在任務分支 `git rebase dev`（有衝突就解完再派 verifier 重跑一次，rebase 後的狀態才是要併的狀態），再到 dev `git merge --ff-only tdd-<代號>`；ff 不了就不併，回頭 rebase。verifier 不是全綠絕不併。
+**merge 後一定核對**：dev 目錄先 `git status --short` 確認沒有未追蹤檔會擋 merge（跑過測試留下的 `*-snapshots/`、`test-results/`、手動複製的 spec 都會讓 ff「Updating…」之後立刻 Aborting），merge 後用 `git log --oneline -1` 與 `git ls-tree dev <路徑>` 確認分支內容真的進了 dev，不要只看輸出第一行；分支刪除前先 `git merge-base --is-ancestor <分支> dev`。
 同時更新：
 - `doc/decisions.md`：這項任務裡主 session 替使用者做的產品決定（一行一條：日期、任務、決定、理由、可逆性）。
 - `doc/pending-checks.md`：verifier 列的「待使用者手點」項目（勾選式清單，release 前清掉）。
@@ -268,6 +269,7 @@ merge 順序：文件 → 視覺 → 資料結構，衝突由主 session 解。v
 
 | 版號 | 日期 | 變更 |
 |---|---|---|
+| 1.7.1 | 2026-10-28 | 步驟 6 補 ff merge 後核對（未追蹤檔會讓 ff 靜默 Aborting；刪分支前確認已含於 dev） |
 | 1.7.0 | 2026-10-27 | 測試先行：硬規則 8–9；步驟 3c 派 planner 寫 `tests/tasks/<代號>.spec.ts` 並證明在 dev 上先紅（量測斷言，不是只缺截圖）；步驟 4 worker 以 spec＋全套＋回歸全綠為完成、≤6 輪、每輪貼實際輸出、不得改 spec、hash 比對；步驟 5 verifier 從乾淨 checkout 重跑並拒收改 spec；步驟 6 只 ff 併入 dev；附錄 C 改為依檔案重疊分波與回報表 |
 | 1.5.0 | 2026-10-26 | 依 strategy-matrix 第六波（ST-22～34a，11 項一次跑完）經驗：步驟 0 加「指定代號」模式與新觸發詞；批次模式改「整波一條分支、每項 PASS 後以指定 commit 併入 dev」；中途使用者在 dev 加需求的處理；等 worker 時預先 Explore 下一項；FAIL 先判斷是驗收條件錯還是程式錯；verifier 掛住的處理；批次模式缺 CLAUDE.md 設定節自行補；最終回報固定格式；附錄 B 補鎖檔、收尾腳本中斷、隔離守門的處理 |
 | 1.3.0 | 2026-10-25 | 改為 plugin 版：專案專屬內容（主程式檔名、頁碼對照、資料慣例）移到各專案 CLAUDE.md 的「task-workflow 設定」；工具路徑改走 `CLAUDE_PLUGIN_ROOT`。功能同 strategy-matrix 1.3.0（授權批次模式、派工前核對事實、decisions／pending-checks／dev-log） |

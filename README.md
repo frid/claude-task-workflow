@@ -48,6 +48,7 @@ Claude Code plugin `task-workflow`：TODO.md 驅動的開發流程。`task-plan`
 
 ## 版本
 
+- 1.7.1（2026-10-28）：task-next 步驟 6 補 ff merge 後核對（未追蹤檔會讓 ff 靜默 Aborting）。
 - 1.7.0（2026-10-27）：`task-next` 改為測試先行——planner 先寫 `tests/tasks/<代號>.spec.ts`（量測斷言：矩形寬度／對齊、computed 顏色、375／1440 不橫向捲動、互動無 console error、截圖基準）並證明在 dev 上先紅；worker 在自己 worktree 做到 spec＋全套＋回歸全綠（≤6 輪、每輪貼實際輸出、不得改 spec）；verifier 從乾淨 checkout 重跑並比對 spec hash；全綠才 ff 併入 dev；依檔案重疊分波平行，波末回報表。
 - 1.6.0（2026-10-26）：新增 `task-explore` skill 與 `tools/explore-shots.mjs`（UI 任務多變體探索：每變體一個 explore/<代號>-<字母> worktree、截圖量測、並排比較頁、選定後交 task-next）。
 - 1.5.0（2026-10-26）：`task-next` 依實戰調整——指定代號模式；批次模式整波一條分支、每項 PASS 後以指定 commit 併入 dev；中途新增需求處理；等 worker 時預先 Explore；FAIL 先判斷驗收條件是否寫錯；verifier 掛住處理；最終回報固定格式；附錄 B 補鎖檔與守門處理。
