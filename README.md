@@ -10,6 +10,7 @@ Claude Code plugin `task-workflow`：TODO.md 驅動的開發流程。`task-plan`
 | skill | `task-next` | 接下一項任務：補編號、核對事實、寫計畫、派 planner 寫 spec（先紅）、派 worker 做到綠、派 verifier 乾淨 checkout 重跑、ff 併入 dev |
 | skill | `task-explore` | 探索：一個 UI 任務列 3–4 種變體，各自 worktree 做最小版，截圖量測、並排比較頁，使用者選定後交 task-next |
 | skill | `task-release` | 收尾：勾 TODO、更新日期標記、decisions／pending-checks、commit、push；merge／release 步驟 |
+| skill | `task-submit-worklog` | PA 工作紀錄（pa-worklog/v1）：各端點把工作整理成固定欄位的信寄給本人（模式 A），PA 統整端以 Gmail 撈回併入週報（模式 B） |
 | agent | `worker-haiku` / `worker-sonnet` / `worker-opus` | 改檔的 worker，依任務輕重選模型 |
 | agent | `verifier-sonnet` | 獨立驗證，不改檔 |
 | tool | `tools/check-js.sh` | 單檔 HTML 抽 `<script>` 跑 `node --check` |
@@ -48,6 +49,7 @@ Claude Code plugin `task-workflow`：TODO.md 驅動的開發流程。`task-plan`
 
 ## 版本
 
+- 1.8.0（2026-11-03）：新增 `task-submit-worklog` skill（PA 工作紀錄寄送／彙整，欄位規格 pa-worklog/v1；YAML 驗證改用有 PyYAML 的 conda NAS python）；新增 `tests/test_task_submit_worklog.py`。
 - 1.7.1（2026-10-28）：task-next 步驟 6 補 ff merge 後核對（未追蹤檔會讓 ff 靜默 Aborting）。
 - 1.7.0（2026-10-27）：`task-next` 改為測試先行——planner 先寫 `tests/tasks/<代號>.spec.ts`（量測斷言：矩形寬度／對齊、computed 顏色、375／1440 不橫向捲動、互動無 console error、截圖基準）並證明在 dev 上先紅；worker 在自己 worktree 做到 spec＋全套＋回歸全綠（≤6 輪、每輪貼實際輸出、不得改 spec）；verifier 從乾淨 checkout 重跑並比對 spec hash；全綠才 ff 併入 dev；依檔案重疊分波平行，波末回報表。
 - 1.6.0（2026-10-26）：新增 `task-explore` skill 與 `tools/explore-shots.mjs`（UI 任務多變體探索：每變體一個 explore/<代號>-<字母> worktree、截圖量測、並排比較頁、選定後交 task-next）。
