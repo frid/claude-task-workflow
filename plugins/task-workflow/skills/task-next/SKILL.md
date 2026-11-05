@@ -2,14 +2,14 @@
 name: task-next
 description: >-
   從 TODO.md 挑下一項未完成任務，先補編號、先寫計畫給使用者確認，點頭後走「測試先行」：
-  先派 planner 寫 Playwright spec 並證明它在 dev 上失敗，再派 worker 在自己的 worktree 做到 spec 與全套測試通過（最多 6 輪），
+  先派 planner-opus 寫驗收契約（測試）並證明它在 dev 上失敗，再派 worker 在自己的 worktree 做到 spec 與全套測試通過（最多 6 輪），
   再派 verifier 從乾淨 checkout 重跑全套並比對 spec 未被改，全綠才 fast-forward 併入 dev、更新 TODO；最後交 task-release 收尾。當使用者說「下一步」「接著做」「做下一項」
   「/task-next」「把 TODO 的 XX-01 做掉」「做 XX-01a」時使用（指定代號就只做那一項或那個範圍）；
   使用者說「由你派、我不介入」「由你當最上層指揮者」「開第 N 波」「一個一個完整做」時進入授權批次模式，
   再說「沒問題就 merge」則每項 PASS 後自行併入 dev。硬規則：一次只做一項；先規劃、等使用者點頭再執行
   （批次模式例外，見步驟 0）；不在 main 上改；使用者沒說「merge」不併入 dev、沒說「release」不上 main。
 metadata:
-  version: "1.7.1"
+  version: "1.9.0"
 ---
 
 # Task Next — 從 TODO.md 接手下一項任務
@@ -30,7 +30,7 @@ metadata:
 5. **要刪檔、搬檔、改檔名，或規格有兩種以上合理解讀 → 停下問使用者**（批次模式下：產品層級的取捨自己決定並記進 `doc/decisions.md`，其餘仍停下問）。
 6. **改檔、驗證都交給 subagent**：主 session 只負責讀 TODO、寫計畫、派工、檢查成果、收尾。主 session 不直接改主程式檔，連一行也一樣。`TODO.md`、`doc/*.md`、skill／agent 定義可由主 session 改。
 7. **主 session 用量守在六成內**：超過約 60% → 先收尾 commit，寫 dev-log（步驟 7），提醒使用者 `/clear` 後用 `task-next` 接著做。
-8. **測試先行**：每項任務先有 `tests/tasks/<代號>.spec.ts`，而且要**先證明它在目前 dev 上失敗**（失敗原因必須是可量測斷言，不能只是截圖基準不存在）才派 worker。沒有紅過的 spec 不算驗收。
+8. **測試先行**：每項任務先有驗收契約檔（設定的「驗收契約檔」，預設 `tests/tasks/<代號>.spec.ts`），而且要**先證明它在目前 dev 上失敗**（失敗原因必須是可量測斷言，不能只是截圖基準不存在）才派 worker。沒有紅過的 spec 不算驗收。
 9. **spec 是驗收契約，worker 不能改**：planner commit spec 後記下 `git hash-object` 的值；verifier 比對 hash，改了 spec 讓它過關的 commit 一律拒收（只有主 session 判定驗收條件本身寫錯，才由 planner 另開 commit 修 spec，並重新證明「先紅」）。
 
 ---
@@ -129,16 +129,18 @@ git branch --show-current
 
 **3c 派 planner 寫 spec（測試先行，點頭後第一件事）**：
 
-- 開這項任務的 worktree（從最新 dev 分出，`tdd-<代號>`），確認裡面有 `node_modules`（雲端掛載不能 symlink → 從本機安裝目錄 `cp -rL --no-preserve=links`）。
-- 派一個 planner subagent（`general-purpose`，只能新增 `tests/tasks/<代號>.spec.ts`，不碰主程式檔），prompt 給：TODO 原文與附圖路徑、相關函式／class 的 grep 線索、下面的 spec 規格、`npm test` 與回歸腳本的跑法。
-- **spec 規格**（寫進 prompt）：
-  - 驗收條件寫成可量測斷言：`getBoundingClientRect` 的寬度與對齊（±1px）、`getComputedStyle` 的顏色／字級／邊框、375×667 與 1440×900 兩種 viewport 下 `document.documentElement.scrollWidth <= clientWidth`（不得橫向捲動；容器內捲動屬設計者另斷言容器）、拖曳／匯出／匯入等互動過程 `pageerror` 與 `console.error` 必須為 `[]`、視覺重要處 `toHaveScreenshot(..., { maxDiffPixelRatio: 0.01 })`。
-  - 每個 test 註解寫對應 TODO 的哪句驗收條件；不測實作細節（函式名、內部變數），除非 TODO 指名。
-  - 不用 `test.skip`／`fixme`／`only`、不用 try/catch 吞斷言、`waitForTimeout` ≤ 500ms。
-  - 截圖基準 PNG **planner 不產生**（dev 上沒有目標狀態可拍），跑完要刪掉自動產生的 `*-snapshots/` 與 `test-results/`。
-- planner 回報必須貼 **在 dev 上跑的實際輸出**：至少一個「任務核心驗收」斷言失敗，而且失敗訊息是量測值（寬度、顏色、文字、位置），不是只有「snapshot doesn't exist」；既有測試仍全綠。核心斷言在 dev 上就通過 → 兩種情況：量測方式錯（退回 planner 重寫）或功能其實已在 dev 上（回報使用者，該項改走「補測試＋收尾」不派 worker）。
-- planner 只 commit spec 一個檔，主 session 記下 commit 與 `git hash-object tests/tasks/<代號>.spec.ts`，寫進 worker 與 verifier 的 prompt。
-- 既有測試在 dev 上本來就紅（例如缺截圖基準）→ 先另開小分支補基準、ff 併入 dev、任務分支 rebase，再派 planner；不要讓 worker 面對本來就紅的套件。
+- 開這項任務的 worktree（從最新 dev 分出，`tdd-<代號>`）；UI 專案確認裡面有 `node_modules`（雲端掛載不能 symlink → 從本機安裝目錄 `cp -rL --no-preserve=links`）。
+- 派 `subagent_type: task-workflow:planner-opus`（frontmatter 已固定 opus，**不另傳 `model`**）。可寫範圍、斷言寫法（UI／CLI／函式庫三類）、先紅標準、隔離與資安、git 身分、回報格式都已寫在 agent 定義與專案設定，**prompt 只寫任務本身**：
+  - worktree 絕對路徑與分支名、契約檔路徑
+  - TODO 原文與附圖路徑、使用者決定（或批次模式下主 session 的決定）
+  - 驗收斷言草案（條列、編號，例如 A1–A4）與現況線索（函式名、約略行號，註明「可能偏移」）
+  - 本任務特許：要改哪些共用測試設施、哪些別項 spec 屬「驗收條件變更」；模式（預設「新契約」，或「補測試」「spec 修正」）
+  - 平行波次時，同波其他任務的代號與一句說明
+  - commit attribution 行
+- planner 回報檢查：**本項輸出**至少一個核心驗收是斷言失敗、訊息是可讀的值（不是收集錯誤、不是只缺截圖基準）；**全套輸出**除預期紅之外全綠。缺輸出 → SendMessage 要它補貼。核心斷言在 dev 上就通過 → planner 會回報「功能已存在」：回報使用者，該項改走「補測試＋收尾」不派 worker。
+- 主 session 記下 planner 回報的**契約檔 commit 與 hash，以及「其他改動」列出的每一支 spec 的新 hash**，寫進 worker 與 verifier 的 prompt。
+- 既有測試在 dev 上本來就紅 → 先另開小分支修好、ff 併入 dev、任務分支 rebase，再派 planner；不要讓 worker 面對本來就紅的套件。
+- 專案設定缺「測試指令」「驗收契約檔」等項時 planner 會推定並標註；主 session 收尾時把推定值補進 CLAUDE.md 設定節。
 
 ---
 
@@ -167,7 +169,7 @@ worker 會先核對計畫與程式現況、一次回報差異（agent 定義要�
 
 worker 回來後：
 - `git diff --stat` 看改動範圍有沒有超出計畫；超出 → 回報使用者（批次模式：自行判斷是否接受並記錄）。
-- `git hash-object tests/tasks/<代號>.spec.ts` 必須等於 planner 的值；不等 → 退回，不進 verifier。
+- 契約檔（及 planner「其他改動」列出的每一支 spec）的 `git hash-object` 必須等於 planner 的值；不等 → 退回，不進 verifier。
 - 回報裡沒有貼測試輸出、或只有摘要 → 用 SendMessage 要它補貼，不自己猜。
 - 6 輪仍紅 → 停下回報（互動模式問使用者；批次模式把該項標「【6 輪未過】」留在 TODO，附最後一輪輸出，接下一項）。
 
@@ -269,6 +271,7 @@ merge 順序：文件 → 視覺 → 資料結構，衝突由主 session 解。v
 
 | 版號 | 日期 | 變更 |
 |---|---|---|
+| 1.9.0 | 2026-11-05 | 步驟 3c 改派獨立 agent `planner-opus`（固定 opus）：規則移入 agent 定義，prompt 只寫任務本身；不再寫死 Playwright，依設定「測試指令」「驗收契約檔」；記錄並比對所有被改 spec 的 hash（來源：FolderScanner repo session 分析） |
 | 1.7.1 | 2026-10-28 | 步驟 6 補 ff merge 後核對（未追蹤檔會讓 ff 靜默 Aborting；刪分支前確認已含於 dev） |
 | 1.7.0 | 2026-10-27 | 測試先行：硬規則 8–9；步驟 3c 派 planner 寫 `tests/tasks/<代號>.spec.ts` 並證明在 dev 上先紅（量測斷言，不是只缺截圖）；步驟 4 worker 以 spec＋全套＋回歸全綠為完成、≤6 輪、每輪貼實際輸出、不得改 spec、hash 比對；步驟 5 verifier 從乾淨 checkout 重跑並拒收改 spec；步驟 6 只 ff 併入 dev；附錄 C 改為依檔案重疊分波與回報表 |
 | 1.5.0 | 2026-10-26 | 依 strategy-matrix 第六波（ST-22～34a，11 項一次跑完）經驗：步驟 0 加「指定代號」模式與新觸發詞；批次模式改「整波一條分支、每項 PASS 後以指定 commit 併入 dev」；中途使用者在 dev 加需求的處理；等 worker 時預先 Explore 下一項；FAIL 先判斷是驗收條件錯還是程式錯；verifier 掛住的處理；批次模式缺 CLAUDE.md 設定節自行補；最終回報固定格式；附錄 B 補鎖檔、收尾腳本中斷、隔離守門的處理 |

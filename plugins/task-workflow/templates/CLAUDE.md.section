@@ -12,3 +12,9 @@ plugin `task-workflow` 的 skill／agent 會讀這一節。每行一項，沒有
 - 回歸必查功能：<例如：載入範例、畫箭頭、匯出 PPTX 不拋例外>
 - 參考資料索引：`doc/reference/README.md`；掃描 PDF 頁碼對照：<PDF 第 n 頁＝書 S(偏移+n)>
 - 自測腳本目錄：`tools/selftest/<代號>.mjs`
+- 測試指令：全套 `npm test`；單檔 `npx playwright test <檔>`（pytest 專案例：`<python> -m pytest -q -p no:cacheprovider`）
+- 驗收契約檔：`tests/tasks/<代號>.spec.ts`（pytest 專案例：`tests/tasks/test_<代號底線>.py`）
+- planner 可寫範圍：<契約檔以外 planner 可改的共用測試設施，例如 `tests/conftest.py`、`tests/helpers/*`；沒有寫「無」>
+- 測試隔離：<測試不得碰的真實資源與替代方式，例如：不寄信（mock send_mail）、不掃正式資料夾（tmp＋fixture）、不讀真實 /etc/fstab（環境變數覆寫）>
+- 敏感資料：<含憑證的檔或區段，讀時要過濾、不得輸出；沒有寫「無」>
+- git 身分：<commit 用的 `user.name`／`user.email`；機器已設定寫「沿用」>
