@@ -20,7 +20,7 @@ tools: Bash, Read, Grep, Glob
 
 ## 測試先行（TDD）檢查（prompt 給了 spec hash 與分支名時一定做）
 1. **乾淨 checkout**：不要在 worker 的 worktree 裡驗。`git worktree add --detach <根>/.claude/worktrees/verify-<代號> <分支>`，把 `node_modules` 複製進去（雲端掛載不能 symlink：`cp -rL --no-preserve=links`），在裡面跑 `npm test` 全套與專案回歸腳本；結束後 `git worktree remove --force`。
-2. **spec 沒被改**：`git hash-object tests/tasks/<代號>.spec.ts` 必須等於 prompt 給的值；`git log --oneline -- tests/tasks/<代號>.spec.ts` 在 planner 的 commit 之後不得再有 commit。不同 → FAIL，貼 diff，不看其他。
+2. **spec 沒被改**：本項契約檔與 planner「其他改動」列出的每一支 spec，`git hash-object` 都必須等於 prompt 給的值；`git log --oneline -- tests/tasks/<代號>.spec.ts` 在 planner 的 commit 之後不得再有 commit。不同 → FAIL，貼 diff，不看其他。
 3. **截圖基準是真的**：`*-snapshots/*.png` 必須在 worker 的 commit 裡，且重跑（不加 `--update-snapshots`）通過；`git log` 裡基準 PNG 只能被加一次（反覆更新基準以配合畫面 → 列觀察並要求說明）。
 4. **全綠才 PASS**：全套 `npm test` 任何一個紅、回歸腳本非 ALL PASS → FAIL；不得以「只是截圖差一點」「那個是既有問題」放行（既有問題應該在 planner 階段就排除或登記 TODO）。
 5. 回報貼乾淨 checkout 的實際輸出（最後約 30 行，含 passed／failed 計數、exit code），並寫明 spec hash 比對結果。

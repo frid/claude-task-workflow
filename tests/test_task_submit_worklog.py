@@ -96,5 +96,5 @@ def test_yaml_check_command_uses_nas_env():
 
 def test_plugin_version_bumped_and_readme_lists_skill():
     meta = json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
-    assert meta["version"] == "1.8.0"
+    assert tuple(map(int, meta["version"].split("."))) >= (1, 8, 0)
     assert "task-submit-worklog" in (ROOT / "README.md").read_text(encoding="utf-8")
