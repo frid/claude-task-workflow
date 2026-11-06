@@ -2,7 +2,7 @@
 # procs.sh — 跨平台偵測 git 程序、安全清除殘留 lock。由 git-guard.sh、doctor.sh、clear-stale-lock.sh source。
 #
 # 原則：「無法判斷有沒有 git 在跑」≠「沒有 git 在跑」。判斷不了就不刪 lock。
-#   （1.9.1 以前用 `pgrep -x git`；Git Bash 沒有 pgrep → 永遠判成「沒有」→ 會刪掉活著的 git 持有的 index.lock）
+#   （1.10.2 以前用 `pgrep -x git`；Git Bash 沒有 pgrep → 永遠判成「沒有」→ 會刪掉活著的 git 持有的 index.lock）
 
 # git_pids：印出執行中 git 程序的 PID（空白分隔；可能為空）。
 #   回傳 0＝偵測成功（輸出為空代表確定沒有 git 在跑）；回傳 2＝無法偵測。

@@ -1,4 +1,4 @@
-"""驗收契約：doctor.sh [c] worktree 指標檢查（1.9.1）。
+"""驗收契約：doctor.sh [c] worktree 指標檢查（1.10.2）。
 
 來源：Windows（Git for Windows / Git Bash）上 git 把 gitdir 寫成 `D:/…` 磁碟代號路徑，
 舊版用 `case "$gd" in /*)` 判斷絕對路徑，把 `D:/…` 當相對路徑接在目錄後面 → 健康的 worktree
