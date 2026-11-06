@@ -115,10 +115,12 @@ def test_verifier_checks_all_touched_specs():
     assert "其他改動" in t and "每一支" in t
 
 
-# P11：版本 1.9.0，README 列出 planner-opus
+# P11：版本 ≥ 1.9.0（planner-opus 自 1.9.0 起），README 列出 planner-opus 與目前版號
 def test_version_and_readme():
     meta = json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
-    assert meta["version"] == "1.9.0"
+    version = meta["version"]
+    assert tuple(int(x) for x in version.split(".")) >= (1, 9, 0), version
     assert "planner-opus" in meta["description"]
     readme = _read(ROOT / "README.md")
     assert "planner-opus" in readme and "1.9.0" in readme
+    assert f"- {version}（" in readme, f"README 版本紀錄缺 {version}"
