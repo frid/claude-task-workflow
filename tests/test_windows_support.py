@@ -214,3 +214,47 @@ def test_w06_skill_uses_validate_script_not_stdin():
     assert "tools/validate-yaml.sh" in t
     code = "\n".join(re.findall(r"```bash\n(.*?)```", t, re.S))
     assert "safe_load(sys.stdin)" not in code, "bash 區塊仍教 stdin 讀 YAML（cp950 會誤判）"
+
+
+# ---------------- WIN-05：開瀏覽器／找 Chrome 依平台處理 ----------------
+@needs_bash
+def test_w05_find_chrome_respects_chrome_path(tmp_path):
+    fake = tmp_path / "mychrome"
+    fake.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8", newline="\n")
+    fake.chmod(0o755)
+    lib = (TOOLS / "lib" / "platform.sh").as_posix()
+    p = _path_with(fake)
+    r = _bash(f'. "{lib}"; find_chrome', {"CHROME_PATH": p})
+    assert r.returncode == 0 and r.stdout.strip() == p, r.stdout + r.stderr
+
+
+@needs_bash
+def test_w05_open_browser_print_converts_local_path(tmp_path):
+    page = tmp_path / "variants.html"
+    page.write_text("<html></html>", encoding="utf-8")
+    ob = (TOOLS / "open-browser.sh").as_posix()
+    r = _bash(f'"{ob}" --print "{_path_with(page)}"', {"TW_BROWSER": "mybrowser"})
+    assert r.returncode == 0, r.stderr
+    out = r.stdout.strip()
+    assert out.startswith("mybrowser "), out
+    if os.name == "nt":
+        assert re.search(r"[A-Za-z]:\\\\", out), f"Windows 上應轉成 C:\ 路徑：{out}"
+    assert "variants.html" in out
+    r = _bash(f'"{ob}" --print "{_path_with(tmp_path)}/nope.html"', {"TW_BROWSER": "mybrowser"})
+    assert r.returncode == 2
+
+
+def test_w05_no_linux_only_browser_commands_in_docs():
+    explore = _read(PLUGIN / "skills" / "task-explore" / "SKILL.md")
+    code = "\n".join(re.findall(r"```bash\n(.*?)```", explore, re.S))
+    assert not re.search(r"^\s*chrome\s", code, re.M), "task-explore 仍用 chrome alias"
+    assert "tools/open-browser.sh" in explore
+    verifier = _read(PLUGIN / "agents" / "verifier-sonnet.md")
+    assert "`google-chrome --headless" not in verifier
+    assert "tools/find-chrome.sh" in verifier
+
+
+def test_w05_explore_shots_uses_dirname():
+    t = _read(TOOLS / "explore-shots.mjs")
+    assert "replace(/\/index\.html$/" not in t, "仍以 regex 去掉 /index.html（Windows 反斜線比對不到）"
+    assert re.search(r"\bdirname\(v\.file\)", t)

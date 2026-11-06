@@ -26,7 +26,7 @@ tools: Bash, Read, Grep, Glob
 5. 回報貼乾淨 checkout 的實際輸出（最後約 30 行，含 passed／failed 計數、exit code），並寫明 spec hash 比對結果。
 
 ## 工具與做法
-- 沒有 puppeteer／playwright 時直接走 CDP：`google-chrome --headless=new --remote-debugging-port=<port>` 搭 node `ws`，或參考 worker 留在 **`tools/selftest/<代號>.mjs`** 的腳本。**優先重跑 worker 的自測腳本並檢查它的斷言是否真的成立**，再補你自己的檢查；不要只信它的結論。
+- 沒有 puppeteer／playwright 時直接走 CDP：`"$("${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/claude-task-workflow/plugins/task-workflow}/tools/find-chrome.sh")" --headless=new --remote-debugging-port=<port>` 搭 node `ws`（find-chrome.sh 跨平台找 Chrome／Chromium／Edge，可用 `CHROME_PATH` 指定；Windows 沒有 `google-chrome` 指令），或參考 worker 留在 **`tools/selftest/<代號>.mjs`** 的腳本。**優先重跑 worker 的自測腳本並檢查它的斷言是否真的成立**，再補你自己的檢查；不要只信它的結論。
 - `confirm`／`prompt`／`alert` 要先 stub；reload 後 stub 會消失，要重設。
 - 下載類（PPTX、CSV）攔截 `URL.createObjectURL` 或 `JSZip.prototype.file` 取得內容，用 python `zipfile`＋`xml.etree` 檢查結構。
 - 有 `node_modules` 時可跑 `npm test` 當回歸的一部分。

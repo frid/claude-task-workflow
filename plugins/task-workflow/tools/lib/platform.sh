@@ -51,6 +51,40 @@ find_gs() {
   return 1
 }
 
+# find_chrome：印出 Chrome／Chromium 執行檔（可用於 --headless=new），找不到回傳 1。
+#   順序：CHROME_PATH → PATH 上的 google-chrome／chromium／chrome → 各平台預設安裝位置 → Microsoft Edge（Chromium 核心，Windows 內建）。
+#   Windows／WSL 印出的是 Git Bash／WSL 可執行的路徑（/c/… 或 /mnt/c/…）。
+find_chrome() {
+  local c os
+  if [ -n "${CHROME_PATH:-}" ]; then
+    [ -x "$CHROME_PATH" ] || command -v "$CHROME_PATH" >/dev/null 2>&1 && { printf '%s\n' "$CHROME_PATH"; return 0; }
+  fi
+  for c in google-chrome google-chrome-stable chromium chromium-browser chrome; do
+    command -v "$c" >/dev/null 2>&1 && { command -v "$c"; return 0; }
+  done
+  os=$(tw_os)
+  local cands=()
+  case "$os" in
+    windows)
+      local la; la=$(cygpath -u "${LOCALAPPDATA:-}" 2>/dev/null || true)
+      cands=("/c/Program Files/Google/Chrome/Application/chrome.exe"
+             "/c/Program Files (x86)/Google/Chrome/Application/chrome.exe"
+             ${la:+"$la/Google/Chrome/Application/chrome.exe"}
+             "/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
+             "/c/Program Files/Microsoft/Edge/Application/msedge.exe") ;;
+    wsl)
+      cands=("/mnt/c/Program Files/Google/Chrome/Application/chrome.exe"
+             "/mnt/c/Program Files (x86)/Google/Chrome/Application/chrome.exe"
+             "/mnt/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe") ;;
+    macos)
+      cands=("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+             "/Applications/Chromium.app/Contents/MacOS/Chromium"
+             "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge") ;;
+  esac
+  for c in "${cands[@]}"; do [ -x "$c" ] && { printf '%s\n' "$c"; return 0; }; done
+  return 1
+}
+
 # pick_py：印出「實際能執行」的 Python 3 指令（python3｜python｜py -3），找不到回傳 1。
 #   只用 command -v 不夠：Windows 的 python3 可能是 Microsoft Store 的空殼（存在但執行失敗或跳出商店）。
 #   呼叫端以不加引號的 $PY 使用（"py -3" 需要分詞），並一律加 -X utf8（cp950 主控台讀寫中文）。
