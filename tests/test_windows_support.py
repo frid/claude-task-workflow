@@ -59,6 +59,23 @@ def test_w02_hooks_cover_powershell_and_use_bash():
         assert cmd.startswith('bash "${CLAUDE_PLUGIN_ROOT}/'), f"{ev} 應以 bash 明確執行：{cmd}"
 
 
+
+@needs_bash
+@pytest.mark.skipif(not shutil.which("git"), reason="需要 git")
+def test_w02_guard_handles_powershell_payload(tmp_path):
+    """PowerShell 工具送來的 git 指令也要經過 lock 守護（有殘留 lock 且無法判斷程序 → 擋下）。"""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    (repo / ".git" / "index.lock").write_bytes(b"")
+    payload = json.dumps({"tool_name": "PowerShell",
+                          "tool_input": {"command": "git status; Get-ChildItem"}, "cwd": repo.as_posix()})
+    guard = (PLUGIN / "hooks" / "git-guard.sh").as_posix()
+    r = subprocess.run([BASH, guard], input=payload, capture_output=True, text=True, encoding="utf-8",
+                       env=dict(os.environ, TW_PROC_METHOD="none"))
+    assert r.returncode == 2, r.stderr
+    assert (repo / ".git" / "index.lock").exists()
+
 # ---------------- WIN-07：.gitattributes、check-js 不得假 PASS ----------------
 def test_w07_gitattributes_forces_lf_for_scripts():
     t = _read(ROOT / ".gitattributes")
