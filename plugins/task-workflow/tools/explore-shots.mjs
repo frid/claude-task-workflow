@@ -7,7 +7,7 @@
 //        [--label A='橫帶疊層|取捨一句' ...] A=<worktreeA>/index.html B=<worktreeB>/index.html ...
 // 輸出：<out>/<字母>-desktop.png、<字母>-desktop-focus.png、<字母>-mobile.png、metrics.json、（--html）variants.html
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
-import { resolve, basename } from 'node:path';
+import { resolve, basename, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
@@ -78,9 +78,11 @@ async function one(v, width, height, tag) {
 
 const metrics = {};
 for (const v of opt.variants) {
-  const dir = v.file.replace(/\/index\.html$/, '');
+  // dirname 而非 regex：Windows 上 resolve() 回傳反斜線路徑，`/\/index\.html$/` 比對不到 → git -C …\index.html 失敗、分支／commit 欄空白
+  const dir = dirname(v.file);
+  const git = args => execSync(`git -C "${dir}" ${args}`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
   let branch = '', commit = '';
-  try { branch = execSync(`git -C "${dir}" branch --show-current`).toString().trim(); commit = execSync(`git -C "${dir}" log -1 --format=%h`).toString().trim(); } catch {}
+  try { branch = git('branch --show-current'); commit = git('log -1 --format=%h'); } catch {}
   console.log(`▶ ${v.key} ${v.file}`);
   metrics[v.key] = { file: v.file, branch, commit, label: opt.labels[v.key] || '',
     desktop: await one(v, 1440, 900, 'desktop'), mobile: await one(v, 375, 812, 'mobile') };

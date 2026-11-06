@@ -19,18 +19,18 @@ tools: Bash, Read, Grep, Glob
 4. **截圖與回歸**：headless Chrome 截新功能畫面（有互動才看得到的，用 CDP 操作後再截；`--headless=new`；1400 寬，必要時加 800 寬），**用 Read 看圖**確認新功能出現、版面沒壞、沒有橫向爆版。回歸：設定列出的既有關鍵功能仍正常、匯出不拋例外。
 
 ## 測試先行（TDD）檢查（prompt 給了 spec hash 與分支名時一定做）
-1. **乾淨 checkout**：不要在 worker 的 worktree 裡驗。`git worktree add --detach <根>/.claude/worktrees/verify-<代號> <分支>`，把 `node_modules` 複製進去（雲端掛載不能 symlink：`cp -rL --no-preserve=links`），在裡面跑 `npm test` 全套與專案回歸腳本；結束後 `git worktree remove --force`。
+1. **乾淨 checkout**：不要在 worker 的 worktree 裡驗。`git worktree add --detach <根>/.claude/worktrees/verify-<代號> <分支>`，把 `node_modules` 複製進去（雲端掛載不能 symlink：`cp -rL --no-preserve=links`；Windows 上複製很慢時，改在裡面跑 `npm ci`。**不要用 junction／symlink 連到來源的 node_modules**：實測 `git worktree remove --force` 會順著 junction 把來源的內容一起刪掉），在裡面跑 `npm test` 全套與專案回歸腳本；結束後 `git worktree remove --force`。
 2. **spec 沒被改**：本項契約檔與 planner「其他改動」列出的每一支 spec，`git hash-object` 都必須等於 prompt 給的值；`git log --oneline -- tests/tasks/<代號>.spec.ts` 在 planner 的 commit 之後不得再有 commit。不同 → FAIL，貼 diff，不看其他。
 3. **截圖基準是真的**：`*-snapshots/*.png` 必須在 worker 的 commit 裡，且重跑（不加 `--update-snapshots`）通過；`git log` 裡基準 PNG 只能被加一次（反覆更新基準以配合畫面 → 列觀察並要求說明）。
 4. **全綠才 PASS**：全套 `npm test` 任何一個紅、回歸腳本非 ALL PASS → FAIL；不得以「只是截圖差一點」「那個是既有問題」放行（既有問題應該在 planner 階段就排除或登記 TODO）。
 5. 回報貼乾淨 checkout 的實際輸出（最後約 30 行，含 passed／failed 計數、exit code），並寫明 spec hash 比對結果。
 
 ## 工具與做法
-- 沒有 puppeteer／playwright 時直接走 CDP：`google-chrome --headless=new --remote-debugging-port=<port>` 搭 node `ws`，或參考 worker 留在 **`tools/selftest/<代號>.mjs`** 的腳本。**優先重跑 worker 的自測腳本並檢查它的斷言是否真的成立**，再補你自己的檢查；不要只信它的結論。
+- 沒有 puppeteer／playwright 時直接走 CDP：`"$("${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/claude-task-workflow/plugins/task-workflow}/tools/find-chrome.sh")" --headless=new --remote-debugging-port=<port>` 搭 node `ws`（find-chrome.sh 跨平台找 Chrome／Chromium／Edge，可用 `CHROME_PATH` 指定；Windows 沒有 `google-chrome` 指令），或參考 worker 留在 **`tools/selftest/<代號>.mjs`** 的腳本。**優先重跑 worker 的自測腳本並檢查它的斷言是否真的成立**，再補你自己的檢查；不要只信它的結論。
 - `confirm`／`prompt`／`alert` 要先 stub；reload 後 stub 會消失，要重設。
 - 下載類（PPTX、CSV）攔截 `URL.createObjectURL` 或 `JSZip.prototype.file` 取得內容，用 python `zipfile`＋`xml.etree` 檢查結構。
 - 有 `node_modules` 時可跑 `npm test` 當回歸的一部分。
-- 來源頁碼核對需要時：`gs -sDEVICE=png16m -r80 -dFirstPage=<n> -dLastPage=<n> -o <png> <pdf>`，頁碼對照看設定。
+- 來源頁碼核對需要時：`"$(command -v gs || command -v gswin64c)" -sDEVICE=png16m -r80 -dFirstPage=<n> -dLastPage=<n> -o <png> <pdf>`，頁碼對照看設定。
 
 ## 判定（不得放水）
 - 語法錯誤、console error、舊存檔載入失敗、截圖看不到新功能或版面明顯壞掉 → **FAIL**，貼原文。

@@ -4,13 +4,15 @@ v2（pa-worklog/v2）需求：
 - 專案名稱可由各專案自行設定（同一 repo 在不同電腦／資料夾開，名稱都一樣），不再限固定詞表。
 - 回報加 ChangeLog 區塊：版本 → 主題分組 → 一行一件事、行尾括號寫任務代號。
 
-執行：/home/nas/miniconda3/envs/NAS/bin/python -m pytest -q -p no:cacheprovider tests/
+執行：python -m pytest -q -p no:cacheprovider tests/（需要 PyYAML；BN-RD-AIServer 可用 /home/nas/miniconda3/envs/NAS/bin/python）
 """
 import json
 import re
 from pathlib import Path
 
-import yaml
+import pytest
+
+yaml = pytest.importorskip("yaml", reason="需要 PyYAML：python -m pip install --user pyyaml")
 
 ROOT = Path(__file__).resolve().parents[1]
 PLUGIN = ROOT / "plugins" / "task-workflow"

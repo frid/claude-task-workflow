@@ -4,7 +4,7 @@ description: >-
   對 TODO.md 裡一項 UI 任務做「多變體探索」：先列 3–4 種實質不同的詮釋或設計（每種一行取捨），
   每個變體派一個 worker 在自己的 git worktree（分支 explore/<代號>-<字母>）做最小可運作版，
   用 headless Chrome 替每個變體截桌面 1440px 與手機 375px 畫面並量測（溢出、文字對比、元素數），
-  產生 explore/<代號>/variants.html 並排比較頁並用使用者的 chrome alias 開啟，然後停下等使用者選。
+  產生 explore/<代號>/variants.html 並排比較頁並用 tools/open-browser.sh 開給使用者（Linux／WSL／macOS／Windows 通用），然後停下等使用者選。
   使用者選定（例「B」「B 但用 A 的配色」）並說「開始」後，刪其他 worktree／分支，把選中的分支交給
   task-next 產線測試、驗證、併入 dev。當使用者說「探索」「出幾個版本比較」「/task-explore」
   「用 explore 做下一個 UI 任務」時使用。硬規則：不碰 main 與 dev；使用者說「開始」之前絕不在選中的路徑上改檔。
@@ -107,8 +107,12 @@ node <plugin>/tools/explore-shots.mjs \
 主 session 跑 `tools/explore-shots.mjs` 時加 `--html` 會同時產生 `explore/<代號>/variants.html`：每個變體一欄，標籤＝字母＋名稱＋一行取捨，下面桌面圖、手機圖、量測摘要表（溢出／最低對比／對比不足數／元素數／console error），底部列各分支名與 commit。
 
 ```bash
-chrome <專案>/explore/<代號>/variants.html     # 使用者的 alias：用 Windows Chrome 開 WSL 檔案
+"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/claude-task-workflow/plugins/task-workflow}/tools/open-browser.sh" <專案>/explore/<代號>/variants.html
 ```
+
+- open-browser.sh 跨平台：`TW_BROWSER`（自訂）→ Chrome／Edge → 系統預設；Windows／WSL 會自動轉成 Windows 路徑。開不起來時加 `--print` 取得指令與路徑，改請使用者自己點開。
+- 截圖用的 Chrome 由 `tools/find-chrome.sh` 找（可設 `CHROME_PATH`）；專案的 `tools/cdp-harness.mjs` 若寫死 `google-chrome`，在 Windows 要改讀 `CHROME_PATH` 或 `find-chrome.sh --windows` 的輸出。
+- `explore-shots.mjs` 與它的 `A=<路徑>` 參數要在 **Bash** 執行（Windows 用 Git Bash）：PowerShell 不會轉換 `/c/…` 路徑，`resolve` 會變成 `C:\c\…`。
 
 然後**停下**，訊息固定格式：
 

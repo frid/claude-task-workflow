@@ -18,6 +18,9 @@ Claude Code plugin `task-workflow`：TODO.md 驅動的開發流程。`task-plan`
 | tool | `tools/explore-shots.mjs` | task-explore 用：每變體截 1440／375、量溢出／對比／元素數，產 variants.html |
 | tool | `tools/release-check.sh` | release 閘門：`npm test` |
 | tool | `tools/clear-stale-lock.sh` | 安全清殘留 `index.lock`：確定沒有 git 在跑才刪（pgrep／Windows tasklist／ps -W；判斷不了就不刪）。git-guard、doctor [a] 共用 `tools/lib/procs.sh` |
+| tool | `tools/find-chrome.sh`／`tools/open-browser.sh` | 跨平台找 Chrome（`CHROME_PATH` → PATH → 各平台預設位置 → Edge）、用瀏覽器開檔（取代 WSL 的 `chrome` alias） |
+| tool | `tools/validate-yaml.sh` | worklog YAML 驗證：找有 PyYAML 的 Python、UTF-8 開檔（exit 0／1／3） |
+| lib | `tools/lib/platform.sh`、`tools/lib/procs.sh` | 平台判斷 `tw_os`、`pick_py`、`install_hint`、`find_gs`、`find_chrome`；git 程序偵測與安全清 lock |
 | templates | `templates/` | 新專案起手：CLAUDE.md 設定段、TODO.md、doc 骨架 |
 
 ## 安裝
@@ -38,6 +41,22 @@ Claude Code plugin `task-workflow`：TODO.md 驅動的開發流程。`task-plan`
 }
 ```
 
+安裝或啟用後要**重開 session** 才會載入 skill／agent／hook。
+
+## 平台需求
+
+| 平台 | 需要 | 安裝 |
+|---|---|---|
+| Linux／WSL | bash、git、jq、node、python3；選配 ghostscript、google-chrome | `sudo apt-get install -y jq nodejs python3 ghostscript` |
+| macOS | 同上 | `brew install jq node python ghostscript` |
+| Windows | **Git for Windows**（提供 Git Bash；hook 與 tools/*.sh 都在 Git Bash 執行）、jq、Node.js、Python 3；選配 Ghostscript、Chrome | `winget install Git.Git jqlang.jq OpenJS.NodeJS.LTS Python.Python.3.12`（選配：`winget install ArtifexSoftware.GhostScript Google.Chrome`） |
+
+Windows 注意事項：
+
+- 裝完要**完全重開** Claude Code（含背景 daemon：`claude daemon stop --any`），新的 PATH 才會生效。
+- Python 3 的 `python3` 可能是 Microsoft Store 的空殼；工具會依序試 `python3`、`python`、`py -3`，並實際執行確認。
+- `tools/doctor.sh --check` 會列出缺少的套件和該平台的安裝指令。
+
 ## 新專案要做的事
 
 1. 把 `templates/CLAUDE.md.section` 貼進專案 `CLAUDE.md`，填好每一項（主程式檔、日期標記、舊存檔相容方式、資料慣例…）。skill／agent 都靠這一節知道專案細節。
@@ -51,6 +70,7 @@ Claude Code plugin `task-workflow`：TODO.md 驅動的開發流程。`task-plan`
 
 ## 版本
 
+- 1.11.0（2026-11-06）：**Windows 支援**（WIN-02～08，#5～#11）——hook 涵蓋 PowerShell、以 `bash` 明確執行；Python 以實際執行挑選（`pick_py`）並一律 `-X utf8`；doctor [e] 依平台給 winget／brew／apt 提示、Ghostscript 跨平台；`find-chrome.sh`／`open-browser.sh` 取代 `google-chrome`／`chrome` alias，explore-shots 改用 `dirname`；worklog 改用 `validate-yaml.sh`、沒有 PyYAML 的測試改為 skip；`.gitattributes` 強制 LF、check-js 語法錯不再 exit 0；`DOCTOR_DRIVE_LETTERS` 雲端磁碟偵測、safe.directory 用 `D:/` 寫法、Windows hook 略過 [d]（SessionStart 4.8s→3.3s）；node_modules 警告勿用 junction。README 新增「平台需求」。新增 `tests/test_windows_support.py`。
 - 1.10.3（2026-11-06）：**WIN-01 lock 安全**——Windows Git Bash 沒有 `pgrep`，舊版 git-guard／doctor [a]／task-release 會把「找不到 pgrep」當成「沒有 git 在跑」而刪掉活著的 git 持有的 `index.lock`。新增 `tools/lib/procs.sh`（`git_pids`：pgrep → tasklist → `ps -W`，全部不能用回報「無法判斷」；`remove_stale_lock`：確定沒有 git 才刪）與 `tools/clear-stale-lock.sh`；git-guard、doctor [a] 改用它，判斷不了一律不刪；task-release、task-next 附錄 B 不再教 `pgrep … || rm -f`。新增 `tests/test_lock_safety.py`。
 - 1.10.2（2026-11-06）：修 `doctor.sh` [c] 在 Windows（Git Bash）誤報 worktree 指標失效——`D:/…` 磁碟代號路徑被當相對路徑；新增 `is_abs_path`／`norm_path`（cygpath 統一 `D:/x` 與 `/d/x` 再去重），去除 gitdir 的 CR；絕對路徑計數也認得磁碟代號；新增 `tests/test_doctor_worktree_paths.py`。
 - 1.10.1（2026-11-06）：`task-submit-worklog` 修正——沒有版號的 ChangeLog 段，`note` 不再重複寫「未發布」（人看的標題已寫「<專案> 未發布（日期）」）；`note` 只放其他補充如預計上線日。

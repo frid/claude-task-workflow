@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# doctor.sh — WSL + Google Drive（/mnt/<盤>）+ git worktree 環境醫生
+# doctor.sh — WSL／Windows Git Bash／Linux／macOS + Google Drive（WSL /mnt/<盤>；Windows 以 DOCTOR_DRIVE_LETTERS 指定）+ git worktree 環境醫生
 #
 # 用法：
 #   doctor.sh [--check|--fix] [--hook] [--repo <path>] [--todo <file>] [--no-fetch] [--quiet]
@@ -11,12 +11,14 @@
 #     --no-fetch  不 git fetch origin（離線）
 #
 # 檢查項目（對應歷史已知失敗 a～f）：
-#   [a] index.lock 殘留／被佔住   [b] /mnt/<盤> dubious ownership／safe.directory
-#   [c] 磁碟代號改變→worktree 指標失效   [d] Google Drive 同步延遲（TODO.md vs HEAD vs origin）
+#   [a] index.lock 殘留／被佔住   [b] 雲端掛載上的 dubious ownership／safe.directory
+#   [c] 磁碟代號改變→worktree 指標失效   [d] Google Drive 同步延遲（TODO.md vs HEAD vs origin；
+#       Windows 的 --hook 模式只在 repo 位於雲端掛載時才跑，省下 SessionStart 時間）
 #   [e] jq 等 statusline 相依套件     [f] worker agent 定義含「一次一個簡單指令」指引
 #
 # exit code：0 全 OK（或 --hook）；1 有 WARN；2 有 FAIL
-# 測試用環境變數：DOCTOR_ASSUME_DRVFS=1 把非 /mnt 路徑也當 Drive 掛載檢查；
+# 環境變數：DOCTOR_DRIVE_LETTERS="G"（Windows：Google Drive 等雲端磁碟的代號，可多個以空白分隔）；
+#   測試用：DOCTOR_ASSUME_DRVFS=1 把任何路徑都當雲端掛載檢查；
 #   GIT_TEST_ASSUME_DIFFERENT_OWNER=1（git 內建）讓 git 把 repo 當成別人的，模擬 dubious ownership。
 
 set -u
@@ -56,9 +58,20 @@ short() { printf "%.7s" "$1"; }
 # 跨平台 git 程序偵測（git_pids：0＝偵測成功、2＝無法偵測）；缺 lib 時一律視為無法偵測 → [a] 不刪 lock
 # shellcheck source=lib/procs.sh
 . "$(cd "$(dirname "$0")" && pwd)/lib/procs.sh" 2>/dev/null || git_pids() { return 2; }
+# 平台判斷（tw_os）與可執行的 Python（pick_py）
+# shellcheck source=lib/platform.sh
+. "$(cd "$(dirname "$0")" && pwd)/lib/platform.sh" 2>/dev/null || { tw_os() { echo linux; }; pick_py() { command -v python3 >/dev/null 2>&1 && echo python3; }; }
 
-is_drvfs() {  # 路徑在 /mnt/<一個字母>/ 底下（WSL DrvFs，Google Drive 掛載在這）
+is_drvfs() {  # 路徑在雲端／外部掛載上：WSL DrvFs（/mnt/<字母>/），或 Windows 上 DOCTOR_DRIVE_LETTERS 列出的磁碟（/g/…、G:/…）
   case "$1" in /mnt/[a-z]/*|/mnt/[a-z]) return 0;; esac
+  if [ -n "${DOCTOR_DRIVE_LETTERS:-}" ]; then
+    local d="" L
+    case "$1" in
+      /[A-Za-z]/*|/[A-Za-z]) d="${1:1:1}" ;;
+      [A-Za-z]:/*|[A-Za-z]:\\*) d="${1:0:1}" ;;
+    esac
+    for L in $DOCTOR_DRIVE_LETTERS; do [ -n "$d" ] && [ "${d^^}" = "${L^^}" ] && return 0; done
+  fi
   [ "${DOCTOR_ASSUME_DRVFS:-0}" = 1 ]
 }
 
@@ -78,6 +91,8 @@ check_ownership() {
   [ -z "$GIT_DIR" ] && { fail "[b] 目前目錄不是 git repo：$REPO（${GIT_ERR:-無錯誤訊息}）"; return; }
   # 在 DrvFs 上，即使現在沒報錯，也確認 safe.directory 已登記（Windows 端改權限後會突然報）
   local main_wt; main_wt=$(dirname "$COMMON_DIR")
+  # Windows 版 git 的 safe.directory 只認 D:/x 寫法（不認 Git Bash 的 /d/x）→ 先轉換，才能正確比對與提示
+  if [ "$(tw_os)" = windows ] && command -v cygpath >/dev/null 2>&1; then main_wt=$(cygpath -m -- "$main_wt"); fi
   if is_drvfs "$main_wt"; then
     local have; have=$(git config --global --get-all safe.directory 2>/dev/null || true)
     local missing=() wts=()
@@ -86,18 +101,18 @@ check_ownership() {
     for p in "$main_wt" "${wts[@]}"; do
       printf '%s\n' "$have" | grep -qxF -- "$p" || printf '%s\n' "$have" | grep -qx '\*' || missing+=("$p")
     done
-    if [ ${#missing[@]} -eq 0 ]; then ok "[b] safe.directory 已涵蓋主 checkout 與所有 worktree（/mnt 掛載）"
+    if [ ${#missing[@]} -eq 0 ]; then ok "[b] safe.directory 已涵蓋主 checkout 與所有 worktree（雲端掛載）"
     else
       if [ "$MODE" = fix ]; then
         for p in "${missing[@]}"; do git config --global --add safe.directory "$p"; done
         fixed "[b] 補登 ${#missing[@]} 個 safe.directory"
       else
-        warn "[b] /mnt 掛載上有 ${#missing[@]} 個路徑未登記 safe.directory（目前還沒報錯，但 Windows 端權限一變就會）"
+        warn "[b] 雲端掛載上有 ${#missing[@]} 個路徑未登記 safe.directory（目前還沒報錯，但 Windows 端權限一變就會）"
         for p in "${missing[@]}"; do hint "git config --global --add safe.directory \"$p\""; done
       fi
     fi
   else
-    ok "[b] repo 不在 /mnt 掛載上，不需 safe.directory"
+    ok "[b] repo 不在雲端掛載上，不需 safe.directory"
   fi
 }
 
@@ -177,9 +192,12 @@ check_worktrees() {
   local candidates=() c wts=()
   mapfile -t wts < <(list_worktree_paths)
   for c in "${wts[@]}" "$(dirname "$COMMON_DIR")"/.claude/worktrees/*; do
-    [ -d "$c" ] && [ -f "$c/.git" ] && candidates+=("$(norm_path "$c")")
+    [ -d "$c" ] && [ -f "$c/.git" ] && candidates+=("$c")
   done
-  # 去重（已 norm_path，D:/x 與 /d/x 視為同一個）
+  # 統一寫法再去重（D:/x 與 /d/x 視為同一個）。Git Bash 一次 cygpath 轉全部：Windows 開程序慢，逐一轉每個要 ~0.1s
+  if [ ${#candidates[@]} -gt 0 ] && command -v cygpath >/dev/null 2>&1; then
+    mapfile -t candidates < <(cygpath -u -- "${candidates[@]}" 2>/dev/null || printf '%s\n' "${candidates[@]}")
+  fi
   mapfile -t candidates < <(printf '%s\n' "${candidates[@]}" | awk 'NF && !seen[$0]++')
   for c in "${candidates[@]}"; do
     [ -f "$c/.git" ] || continue
@@ -193,7 +211,7 @@ check_worktrees() {
   local rel_cfg; rel_cfg=$(git -C "$REPO" config --get worktree.useRelativePaths 2>/dev/null || echo unset)
 
   if [ ${#broken[@]} -eq 0 ]; then
-    ok "[c] worktree 指標雙向都解析得到（$(list_worktree_paths | wc -l) 個 worktree）"
+    ok "[c] worktree 指標雙向都解析得到（${#wts[@]} 個 worktree）"
   else
     if [ "$MODE" = fix ]; then
       local out; out=$(git -C "$REPO" worktree repair "${candidates[@]}" 2>&1)
@@ -213,7 +231,7 @@ check_worktrees() {
       git -C "$REPO" config worktree.useRelativePaths true && git -C "$REPO" worktree repair "${candidates[@]}" >/dev/null 2>&1 \
         && fixed "[c] 已設 worktree.useRelativePaths=true 並重寫為相對路徑（$abs 個原為絕對）"
     else
-      warn "[c] $abs 個 worktree 指標是絕對路徑，/mnt 盤代號一變就斷（useRelativePaths=$rel_cfg）"
+      warn "[c] $abs 個 worktree 指標是絕對路徑，雲端磁碟代號一變就斷（useRelativePaths=$rel_cfg）"
       hint "git config worktree.useRelativePaths true && git worktree repair .claude/worktrees/*"
     fi
   elif [ "$rel_cfg" != true ] && is_drvfs "$(dirname "$COMMON_DIR")"; then
@@ -268,29 +286,50 @@ check_drive_sync() {
 
 # ---------- [e] 相依套件 ----------
 check_deps() {
-  local need="git jq python3 node" missing=() b
-  # statusline 腳本裡實際用到的指令也納入
-  local sl; sl=$(python3 - <<'PY' 2>/dev/null
-import json,os
-p=os.path.expanduser('~/.claude/settings.json')
+  # python 是「虛擬」需求：python3／python／py -3 任一能實際執行即可（pick_py）
+  local need="git jq python node" missing=() b PY sl=""
+  PY=$(pick_py) || PY=""
+  # statusline 腳本裡實際用到的指令也納入。settings.json 以 UTF-8 讀（cp950 主控台下中文不會丟例外）；
+  # 用 shlex 解析，支援 `bash x.sh`、含空白的 "C:\Program Files\…\x.py"
+  if [ -n "$PY" ]; then
+    # shellcheck disable=SC2086
+    sl=$($PY -X utf8 - <<'PYEOF' 2>/dev/null
+import json, os, shlex
+p = os.path.expanduser('~/.claude/settings.json')
 try:
-    d=json.load(open(p)); c=d.get('statusLine',{}).get('command','')
-    print(c.split()[0] if c else '')
-except Exception: print('')
-PY
+    c = json.load(open(p, encoding='utf-8')).get('statusLine', {}).get('command', '')
+    toks = [t.strip('"\'') for t in shlex.split(c, posix=False)] if c else []
+    cand = [t for t in toks if t.lower().endswith(('.sh', '.py', '.js', '.mjs', '.ps1'))]
+    print((cand or toks or [''])[0])
+except Exception:
+    print('')
+PYEOF
 )
-  if [ -n "$sl" ] && [ -f "$sl" ]; then
-    for b in jq python3 node bc; do grep -qE "(^|[^[:alnum:]_])$b([^[:alnum:]_]|$)" "$sl" && need="$need $b"; done
   fi
-  for b in $(printf '%s\n' $need | sort -u); do command -v "$b" >/dev/null 2>&1 || missing+=("$b"); done
-  if [ ${#missing[@]} -eq 0 ]; then ok "[e] 相依套件齊全：$(printf '%s\n' $need | sort -u | tr '\n' ' ')"; return; fi
-  local apt=()
-  for b in "${missing[@]}"; do case "$b" in node) apt+=(nodejs);; *) apt+=("$b");; esac; done
-  if [ "$MODE" = fix ] && sudo -n true 2>/dev/null; then
-    sudo -n apt-get install -y "${apt[@]}" >/dev/null 2>&1 && { fixed "[e] 已安裝：${missing[*]}"; return; }
+  sl="${sl%$'\r'}"; sl="${sl/#\~/$HOME}"
+  if [ -n "$sl" ] && [ "$(tw_os)" = windows ] && command -v cygpath >/dev/null 2>&1; then
+    sl=$(cygpath -u -- "$sl" 2>/dev/null || printf '%s' "$sl")
+  fi
+  if [ -n "$sl" ] && [ -f "$sl" ]; then
+    for b in jq python3 python node bc; do grep -qE "(^|[^[:alnum:]_])$b([^[:alnum:]_]|$)" "$sl" && need="$need $b"; done
+  fi
+  need=$(printf '%s\n' $need | sed 's/^python3$/python/' | sort -u)
+  for b in $need; do
+    if [ "$b" = python ]; then [ -n "$PY" ] || missing+=(python); continue; fi
+    command -v "$b" >/dev/null 2>&1 || missing+=("$b")
+  done
+  # 選配（缺了只影響部分功能，不算 FAIL；hook 模式不顯示）
+  find_gs >/dev/null 2>&1 || info "[e] 選配：缺 Ghostscript（讀掃描 PDF 用）→ $(install_hint gs)"
+  if [ ${#missing[@]} -eq 0 ]; then ok "[e] 相依套件齊全：$(printf '%s\n' $need | sed "s/^python\$/python（${PY:-?}）/" | tr '\n' ' ')"; return; fi
+  local os cmd; os=$(tw_os); cmd=$(install_hint "${missing[@]}" || true)
+  # 只有 Linux／WSL 在 --fix 時自動裝（sudo -n＝不問密碼）；Windows 的 sudo 沒有 -n 且多半停用，macOS 交給使用者
+  if [ "$MODE" = fix ] && { [ "$os" = linux ] || [ "$os" = wsl ]; } && sudo -n true 2>/dev/null; then
+    # shellcheck disable=SC2086
+    sudo -n ${cmd#sudo } >/dev/null 2>&1 && { fixed "[e] 已安裝：${missing[*]}"; return; }
   fi
   fail "[e] 缺套件：${missing[*]}${sl:+（statusline：$sl 會用到）}"
-  hint "sudo apt-get install -y ${apt[*]}"
+  if [ -n "$cmd" ]; then hint "$cmd"; else hint "請手動安裝：${missing[*]}"; fi
+  [ "$os" = windows ] && hint "裝完要完全重開 Claude Code（含背景 daemon：claude daemon stop --any），新的 PATH 才會生效"
 }
 
 # ---------- [f] worker agent 定義 ----------
@@ -308,7 +347,12 @@ check_agents() {
 check_ownership
 check_locks
 check_worktrees
-check_drive_sync
+# [d] 是 Google Drive 同步延遲檢查：Windows 的 SessionStart（--hook）只在 repo 位於雲端掛載時才跑（約省 1 秒）；手動執行照常
+if [ "$HOOK" = 1 ] && [ "$(tw_os)" = windows ] && [ -n "$COMMON_DIR" ] && ! is_drvfs "$(dirname "$COMMON_DIR")"; then
+  info "[d] Windows hook 模式：repo 不在雲端掛載，略過同步比對"
+else
+  check_drive_sync
+fi
 check_deps
 check_agents
 
