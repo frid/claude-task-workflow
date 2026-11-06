@@ -17,6 +17,7 @@ Claude Code plugin `task-workflow`：TODO.md 驅動的開發流程。`task-plan`
 | tool | `tools/check-js.sh` | 單檔 HTML 抽 `<script>` 跑 `node --check` |
 | tool | `tools/explore-shots.mjs` | task-explore 用：每變體截 1440／375、量溢出／對比／元素數，產 variants.html |
 | tool | `tools/release-check.sh` | release 閘門：`npm test` |
+| tool | `tools/clear-stale-lock.sh` | 安全清殘留 `index.lock`：確定沒有 git 在跑才刪（pgrep／Windows tasklist／ps -W；判斷不了就不刪）。git-guard、doctor [a] 共用 `tools/lib/procs.sh` |
 | templates | `templates/` | 新專案起手：CLAUDE.md 設定段、TODO.md、doc 骨架 |
 
 ## 安裝
@@ -50,6 +51,7 @@ Claude Code plugin `task-workflow`：TODO.md 驅動的開發流程。`task-plan`
 
 ## 版本
 
+- 1.9.2（2026-11-06）：**WIN-01 lock 安全**——Windows Git Bash 沒有 `pgrep`，舊版 git-guard／doctor [a]／task-release 會把「找不到 pgrep」當成「沒有 git 在跑」而刪掉活著的 git 持有的 `index.lock`。新增 `tools/lib/procs.sh`（`git_pids`：pgrep → tasklist → `ps -W`，全部不能用回報「無法判斷」；`remove_stale_lock`：確定沒有 git 才刪）與 `tools/clear-stale-lock.sh`；git-guard、doctor [a] 改用它，判斷不了一律不刪；task-release、task-next 附錄 B 不再教 `pgrep … || rm -f`。新增 `tests/test_lock_safety.py`。
 - 1.9.1（2026-11-06）：修 `doctor.sh` [c] 在 Windows（Git Bash）誤報 worktree 指標失效——`D:/…` 磁碟代號路徑被當相對路徑；新增 `is_abs_path`／`norm_path`（cygpath 統一 `D:/x` 與 `/d/x` 再去重），去除 gitdir 的 CR；絕對路徑計數也認得磁碟代號；新增 `tests/test_doctor_worktree_paths.py`。
 - 1.9.0（2026-11-05）：新增 `planner-opus` agent（固定 opus），task-next 步驟 3c 改派它、prompt 只寫任務本身；不再寫死 Playwright／`npm test`，改讀設定的「測試指令」「驗收契約檔」；設定範本加 6 項（測試指令、驗收契約檔、planner 可寫範圍、測試隔離、敏感資料、git 身分）；worker／verifier 比對所有被改 spec 的 hash；新增 `tests/test_planner_opus.py`。
 - 1.8.0（2026-11-03）：新增 `task-submit-worklog` skill（PA 工作紀錄寄送／彙整，欄位規格 pa-worklog/v1；YAML 驗證改用有 PyYAML 的 conda NAS python）；新增 `tests/test_task_submit_worklog.py`。
