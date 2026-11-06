@@ -118,7 +118,7 @@ def test_verifier_checks_all_touched_specs():
 # P11：版本 1.9.0，README 列出 planner-opus
 def test_version_and_readme():
     meta = json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
-    assert meta["version"] == "1.9.0"
+    assert tuple(map(int, meta["version"].split("."))) >= (1, 9, 0)  # 之後進版不應讓本契約失敗
     assert "planner-opus" in meta["description"]
     readme = _read(ROOT / "README.md")
     assert "planner-opus" in readme and "1.9.0" in readme

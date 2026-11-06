@@ -18,3 +18,5 @@ plugin `task-workflow` 的 skill／agent 會讀這一節。每行一項，沒有
 - 測試隔離：<測試不得碰的真實資源與替代方式，例如：不寄信（mock send_mail）、不掃正式資料夾（tmp＋fixture）、不讀真實 /etc/fstab（環境變數覆寫）>
 - 敏感資料：<含憑證的檔或區段，讀時要過濾、不得輸出；沒有寫「無」>
 - git 身分：<commit 用的 `user.name`／`user.email`；機器已設定寫「沿用」>
+- PA 專案名稱：<task-submit-worklog 回報用的專案名，例如 `eQMS`；同一 repo 在任何電腦、任何資料夾開都用這個名字>
+- ChangeLog 檔：<task-submit-worklog 摘要用，例如 `ChangeLog.md`（舊月份封存於 `ChangeLog/YYYY-MM.md`）；沒有寫「無」>
