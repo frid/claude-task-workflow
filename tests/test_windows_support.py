@@ -79,3 +79,63 @@ def test_w07_check_js_fails_on_syntax_error(tmp_path):
     assert r.returncode != 0, f"語法錯卻 exit 0：{r.stdout}{r.stderr}"
     r = _bash(f'"{cj}" "{good.as_posix()}"', env)
     assert r.returncode == 0 and "JS OK" in r.stdout, r.stdout + r.stderr
+
+
+# ---------------- WIN-03：Python 偵測（實際執行）與 UTF-8 ----------------
+@pytest.fixture
+def broken_bin(tmp_path):
+    """放一個「存在但執行失敗」的 python3 與 jq（模擬 Windows Store 空殼）。"""
+    d = tmp_path / "fakebin"
+    d.mkdir()
+    for name in ("python3", "jq"):
+        p = d / name
+        p.write_text("#!/bin/sh\nexit 9\n", encoding="utf-8", newline="\n")
+        p.chmod(0o755)
+    return d
+
+
+def _path_with(d):
+    return d.as_posix() if os.name != "nt" else subprocess.run(
+        [BASH, "-c", f'cygpath -u "{d}"'], capture_output=True, text=True).stdout.strip()
+
+
+@needs_bash
+def test_w03_pick_py_skips_broken_python3(broken_bin):
+    lib = (TOOLS / "lib" / "platform.sh").as_posix()
+    if not shutil.which("python") and not shutil.which("py"):
+        pytest.skip("需要 python 或 py 當替代候選")
+    r = _bash(f'export PATH="{_path_with(broken_bin)}:$PATH"; . "{lib}"; pick_py')
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() in ("python", "py -3"), f"應跳過壞掉的 python3：{r.stdout!r}"
+    r = _bash(f'. "{lib}"; TW_PY_CANDIDATES="nonexistent_a|nonexistent_b" pick_py')
+    assert r.returncode == 1 and r.stdout.strip() == ""
+
+
+@needs_bash
+@pytest.mark.skipif(not shutil.which("git"), reason="需要 git")
+def test_w03_guard_parses_when_jq_and_python3_broken(tmp_path, broken_bin):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    (repo / ".git" / "index.lock").write_bytes(b"")
+    payload = json.dumps({"tool_input": {"command": "git commit -m \"中文訊息 ✓\""},
+                          "cwd": repo.as_posix()}, ensure_ascii=False)
+    guard = (PLUGIN / "hooks" / "git-guard.sh").as_posix()
+    env = dict(os.environ, TW_PROC_METHOD="none")
+    r = subprocess.run([BASH, "-c", f'export PATH="{_path_with(broken_bin)}:$PATH"; "{guard}"'],
+                       input=payload, capture_output=True, text=True, encoding="utf-8", env=env)
+    # 解析成功 → 認出 git 指令 → 有 lock 且無法判斷程序 → exit 2；解析失敗會變成 CMD 空白 → exit 0 放行
+    assert r.returncode == 2, f"jq／python3 壞掉時 guard 沒認出 git 指令：rc={r.returncode} {r.stderr}"
+    assert (repo / ".git" / "index.lock").exists()
+
+
+def test_w03_no_bare_python3_calls_in_scripts():
+    offenders = []
+    for p in list(PLUGIN.rglob("*.sh")):
+        for i, ln in enumerate(_read(p).splitlines(), 1):
+            s = ln.strip()
+            if s.startswith("#"):
+                continue
+            if re.search(r"(?:^|[;&|(]|\$\()\s*python3\s", s):
+                offenders.append(f"{p.relative_to(ROOT)}:{i}")
+    assert not offenders, f"直接呼叫 python3（應改用 pick_py）：{offenders}"

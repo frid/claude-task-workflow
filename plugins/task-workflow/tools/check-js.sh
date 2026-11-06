@@ -6,7 +6,11 @@ HTML="${1:-./index.html}"
 [ -f "$HTML" ] || { echo "找不到 $HTML" >&2; exit 2; }
 OUT="${CLAUDE_JOB_DIR:-/tmp}/tmp/_check_js_$$.js"
 mkdir -p "$(dirname "$OUT")"
-python3 - "$HTML" "$OUT" <<'PY'
+# shellcheck source=lib/platform.sh
+. "$(cd "$(dirname "$0")" && pwd)/lib/platform.sh"
+PY=$(pick_py) || { echo "找不到可執行的 Python 3（試過 python3／python／py -3）；Windows：winget install Python.Python.3.12" >&2; exit 2; }
+# shellcheck disable=SC2086
+$PY -X utf8 - "$HTML" "$OUT" <<'PY'
 import re, sys, pathlib
 html = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
 js = "\n;\n".join(re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", html, re.S))

@@ -56,6 +56,9 @@ short() { printf "%.7s" "$1"; }
 # 跨平台 git 程序偵測（git_pids：0＝偵測成功、2＝無法偵測）；缺 lib 時一律視為無法偵測 → [a] 不刪 lock
 # shellcheck source=lib/procs.sh
 . "$(cd "$(dirname "$0")" && pwd)/lib/procs.sh" 2>/dev/null || git_pids() { return 2; }
+# 平台判斷（tw_os）與可執行的 Python（pick_py）
+# shellcheck source=lib/platform.sh
+. "$(cd "$(dirname "$0")" && pwd)/lib/platform.sh" 2>/dev/null || { tw_os() { echo linux; }; pick_py() { command -v python3 >/dev/null 2>&1 && echo python3; }; }
 
 is_drvfs() {  # 路徑在 /mnt/<一個字母>/ 底下（WSL DrvFs，Google Drive 掛載在這）
   case "$1" in /mnt/[a-z]/*|/mnt/[a-z]) return 0;; esac
@@ -268,22 +271,39 @@ check_drive_sync() {
 
 # ---------- [e] 相依套件 ----------
 check_deps() {
-  local need="git jq python3 node" missing=() b
-  # statusline 腳本裡實際用到的指令也納入
-  local sl; sl=$(python3 - <<'PY' 2>/dev/null
-import json,os
-p=os.path.expanduser('~/.claude/settings.json')
+  # python 是「虛擬」需求：python3／python／py -3 任一能實際執行即可（pick_py）
+  local need="git jq python node" missing=() b PY sl=""
+  PY=$(pick_py) || PY=""
+  # statusline 腳本裡實際用到的指令也納入。settings.json 以 UTF-8 讀（cp950 主控台下中文不會丟例外）；
+  # 用 shlex 解析，支援 `bash x.sh`、含空白的 "C:\Program Files\…\x.py"
+  if [ -n "$PY" ]; then
+    # shellcheck disable=SC2086
+    sl=$($PY -X utf8 - <<'PYEOF' 2>/dev/null
+import json, os, shlex
+p = os.path.expanduser('~/.claude/settings.json')
 try:
-    d=json.load(open(p)); c=d.get('statusLine',{}).get('command','')
-    print(c.split()[0] if c else '')
-except Exception: print('')
-PY
+    c = json.load(open(p, encoding='utf-8')).get('statusLine', {}).get('command', '')
+    toks = [t.strip('"\'') for t in shlex.split(c, posix=False)] if c else []
+    cand = [t for t in toks if t.lower().endswith(('.sh', '.py', '.js', '.mjs', '.ps1'))]
+    print((cand or toks or [''])[0])
+except Exception:
+    print('')
+PYEOF
 )
-  if [ -n "$sl" ] && [ -f "$sl" ]; then
-    for b in jq python3 node bc; do grep -qE "(^|[^[:alnum:]_])$b([^[:alnum:]_]|$)" "$sl" && need="$need $b"; done
   fi
-  for b in $(printf '%s\n' $need | sort -u); do command -v "$b" >/dev/null 2>&1 || missing+=("$b"); done
-  if [ ${#missing[@]} -eq 0 ]; then ok "[e] 相依套件齊全：$(printf '%s\n' $need | sort -u | tr '\n' ' ')"; return; fi
+  sl="${sl%$'\r'}"; sl="${sl/#\~/$HOME}"
+  if [ -n "$sl" ] && [ "$(tw_os)" = windows ] && command -v cygpath >/dev/null 2>&1; then
+    sl=$(cygpath -u -- "$sl" 2>/dev/null || printf '%s' "$sl")
+  fi
+  if [ -n "$sl" ] && [ -f "$sl" ]; then
+    for b in jq python3 python node bc; do grep -qE "(^|[^[:alnum:]_])$b([^[:alnum:]_]|$)" "$sl" && need="$need $b"; done
+  fi
+  need=$(printf '%s\n' $need | sed 's/^python3$/python/' | sort -u)
+  for b in $need; do
+    if [ "$b" = python ]; then [ -n "$PY" ] || missing+=(python); continue; fi
+    command -v "$b" >/dev/null 2>&1 || missing+=("$b")
+  done
+  if [ ${#missing[@]} -eq 0 ]; then ok "[e] 相依套件齊全：$(printf '%s\n' $need | sed "s/^python\$/python（${PY:-?}）/" | tr '\n' ' ')"; return; fi
   local apt=()
   for b in "${missing[@]}"; do case "$b" in node) apt+=(nodejs);; *) apt+=("$b");; esac; done
   if [ "$MODE" = fix ] && sudo -n true 2>/dev/null; then
