@@ -50,6 +50,7 @@ Claude Code plugin `task-workflow`：TODO.md 驅動的開發流程。`task-plan`
 
 ## 版本
 
+- 1.10.1（2026-11-06）：`task-submit-worklog` 修正——沒有版號的 ChangeLog 段，`note` 不再重複寫「未發布」（人看的標題已寫「<專案> 未發布（日期）」）；`note` 只放其他補充如預計上線日。
 - 1.10.0（2026-11-06）：`task-submit-worklog` 升 pa-worklog/v2——專案名稱改讀各專案 task-workflow 設定的「PA 專案名稱」（跟著 repo 走，不用資料夾名稱），不再限固定詞表；新增 `changelog` 區塊（版本 → 主題分組 → 一行一件事、行尾括號寫任務代號）與設定「ChangeLog 檔」；模式 B 同時接受 v1／v2；設定範本加這兩項；`tests/test_task_submit_worklog.py` 改為 v2 契約。
 - 1.9.0（2026-11-05）：新增 `planner-opus` agent（固定 opus），task-next 步驟 3c 改派它、prompt 只寫任務本身；不再寫死 Playwright／`npm test`，改讀設定的「測試指令」「驗收契約檔」；設定範本加 6 項（測試指令、驗收契約檔、planner 可寫範圍、測試隔離、敏感資料、git 身分）；worker／verifier 比對所有被改 spec 的 hash；新增 `tests/test_planner_opus.py`。
 - 1.8.0（2026-11-03）：新增 `task-submit-worklog` skill（PA 工作紀錄寄送／彙整，欄位規格 pa-worklog/v1；YAML 驗證改用有 PyYAML 的 conda NAS python）；新增 `tests/test_task_submit_worklog.py`。
