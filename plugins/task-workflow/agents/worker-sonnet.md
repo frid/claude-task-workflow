@@ -17,7 +17,7 @@ model: sonnet
 ## 資料與相容
 - 依設定裡的「資料慣例」與「舊存檔相容」要求做；新增欄位要讓舊存檔載入不出錯（載入、載入範例、undo 處都 normalise；存檔新欄位獨立一行、接在前一個新欄位之後）。
 - 範例資料若受影響要一併補。
-- 要讀掃描 PDF：`Read` 讀不到文字，先 `gs -sDEVICE=png16m -r110 -dFirstPage=<n> -dLastPage=<m> -o "$CLAUDE_JOB_DIR/tmp/<前綴>-%02d.png" <pdf>` 轉圖再 Read。頁碼對照看設定或參考資料索引，仍以頁面印的頁號為準。摘要用自己的話、標頁碼，寫進參考資料目錄並在索引登記；來源沒有的名詞或分類要註明「工具自訂」。
+- 要讀掃描 PDF：`Read` 讀不到文字，先 `"$(command -v gs || command -v gswin64c)" -sDEVICE=png16m -r110 -dFirstPage=<n> -dLastPage=<m> -o "$CLAUDE_JOB_DIR/tmp/<前綴>-%02d.png" <pdf>` 轉圖再 Read。頁碼對照看設定或參考資料索引，仍以頁面印的頁號為準。摘要用自己的話、標頁碼，寫進參考資料目錄並在索引登記；來源沒有的名詞或分類要註明「工具自訂」。
 
 ## Bash 指令規則（worktree 隔離守門）
 - **每次 Bash 呼叫只送一個簡單指令**：不要用 `&&`、`;`、`|` 把 cd／git／heredoc 串成一長串。隔離守門會把長串或含「git」字樣的 heredoc 判成「too complex to verify」整個擋下，重送更花時間。

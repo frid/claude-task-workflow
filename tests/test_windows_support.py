@@ -139,3 +139,39 @@ def test_w03_no_bare_python3_calls_in_scripts():
             if re.search(r"(?:^|[;&|(]|\$\()\s*python3\s", s):
                 offenders.append(f"{p.relative_to(ROOT)}:{i}")
     assert not offenders, f"直接呼叫 python3（應改用 pick_py）：{offenders}"
+
+
+# ---------------- WIN-04：依平台給安裝提示 ----------------
+@needs_bash
+@pytest.mark.parametrize("os_name,expect", [
+    ("windows", "winget install jqlang.jq OpenJS.NodeJS.LTS Python.Python.3.12 ArtifexSoftware.GhostScript"),
+    ("macos", "brew install jq node python ghostscript"),
+    ("linux", "sudo apt-get install -y jq nodejs python3 ghostscript"),
+    ("wsl", "sudo apt-get install -y jq nodejs python3 ghostscript"),
+])
+def test_w04_install_hint_per_platform(os_name, expect):
+    lib = (TOOLS / "lib" / "platform.sh").as_posix()
+    r = _bash(f'. "{lib}"; install_hint jq node python gs', {"TW_OS": os_name})
+    assert r.stdout.strip() == expect, r.stdout + r.stderr
+
+
+def test_w04_apt_get_only_in_platform_lib():
+    offenders = [str(p.relative_to(ROOT)) for p in PLUGIN.rglob("*.sh")
+                 if p.name != "platform.sh" and "apt-get" in _read(p)]
+    assert not offenders, f"apt-get 應只出現在 lib/platform.sh 的 install_hint：{offenders}"
+
+
+@needs_bash
+@pytest.mark.skipif(os.name != "nt", reason="Windows 專屬：從 PATH 拿掉 node 目錄")
+@pytest.mark.skipif(not shutil.which("git"), reason="需要 git")
+def test_w04_doctor_missing_node_hints_winget(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    doctor = (TOOLS / "doctor.sh").as_posix()
+    r = _bash('export PATH="$(printf %s "$PATH" | tr : "\n" | grep -vi nodejs | paste -sd:)"; '
+              f'"{doctor}" --check --no-fetch --repo "{repo.as_posix()}"')
+    out = r.stdout + r.stderr
+    assert "缺套件：node" in out, out
+    assert "winget install OpenJS.NodeJS.LTS" in out, out
+    assert "apt-get" not in out, out

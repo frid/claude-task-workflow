@@ -303,14 +303,18 @@ PYEOF
     if [ "$b" = python ]; then [ -n "$PY" ] || missing+=(python); continue; fi
     command -v "$b" >/dev/null 2>&1 || missing+=("$b")
   done
+  # 選配（缺了只影響部分功能，不算 FAIL；hook 模式不顯示）
+  find_gs >/dev/null 2>&1 || info "[e] 選配：缺 Ghostscript（讀掃描 PDF 用）→ $(install_hint gs)"
   if [ ${#missing[@]} -eq 0 ]; then ok "[e] 相依套件齊全：$(printf '%s\n' $need | sed "s/^python\$/python（${PY:-?}）/" | tr '\n' ' ')"; return; fi
-  local apt=()
-  for b in "${missing[@]}"; do case "$b" in node) apt+=(nodejs);; *) apt+=("$b");; esac; done
-  if [ "$MODE" = fix ] && sudo -n true 2>/dev/null; then
-    sudo -n apt-get install -y "${apt[@]}" >/dev/null 2>&1 && { fixed "[e] 已安裝：${missing[*]}"; return; }
+  local os cmd; os=$(tw_os); cmd=$(install_hint "${missing[@]}" || true)
+  # 只有 Linux／WSL 在 --fix 時自動裝（sudo -n＝不問密碼）；Windows 的 sudo 沒有 -n 且多半停用，macOS 交給使用者
+  if [ "$MODE" = fix ] && { [ "$os" = linux ] || [ "$os" = wsl ]; } && sudo -n true 2>/dev/null; then
+    # shellcheck disable=SC2086
+    sudo -n ${cmd#sudo } >/dev/null 2>&1 && { fixed "[e] 已安裝：${missing[*]}"; return; }
   fi
   fail "[e] 缺套件：${missing[*]}${sl:+（statusline：$sl 會用到）}"
-  hint "sudo apt-get install -y ${apt[*]}"
+  if [ -n "$cmd" ]; then hint "$cmd"; else hint "請手動安裝：${missing[*]}"; fi
+  [ "$os" = windows ] && hint "裝完要完全重開 Claude Code（含背景 daemon：claude daemon stop --any），新的 PATH 才會生效"
 }
 
 # ---------- [f] worker agent 定義 ----------

@@ -183,7 +183,7 @@ git log --oneline -15
 
 subagent 內的做法：
 ```bash
-gs -sDEVICE=png16m -r110 -dFirstPage=<n> -dLastPage=<m> \
+"$(command -v gs || command -v gswin64c)" -sDEVICE=png16m -r110 -dFirstPage=<n> -dLastPage=<m> \
    -o "$CLAUDE_JOB_DIR/tmp/<前綴>-%02d.png" "<pdf 路徑>"
 ```
 再逐張 Read。一次不超過 20 頁；章節長就分 2–3 個 subagent 平行，各自回傳摘要後由主 session 合併成一份檔。

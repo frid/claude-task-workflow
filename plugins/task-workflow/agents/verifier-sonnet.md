@@ -30,7 +30,7 @@ tools: Bash, Read, Grep, Glob
 - `confirm`／`prompt`／`alert` 要先 stub；reload 後 stub 會消失，要重設。
 - 下載類（PPTX、CSV）攔截 `URL.createObjectURL` 或 `JSZip.prototype.file` 取得內容，用 python `zipfile`＋`xml.etree` 檢查結構。
 - 有 `node_modules` 時可跑 `npm test` 當回歸的一部分。
-- 來源頁碼核對需要時：`gs -sDEVICE=png16m -r80 -dFirstPage=<n> -dLastPage=<n> -o <png> <pdf>`，頁碼對照看設定。
+- 來源頁碼核對需要時：`"$(command -v gs || command -v gswin64c)" -sDEVICE=png16m -r80 -dFirstPage=<n> -dLastPage=<n> -o <png> <pdf>`，頁碼對照看設定。
 
 ## 判定（不得放水）
 - 語法錯誤、console error、舊存檔載入失敗、截圖看不到新功能或版面明顯壞掉 → **FAIL**，貼原文。

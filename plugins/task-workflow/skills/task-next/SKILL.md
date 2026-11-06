@@ -235,7 +235,7 @@ verifier 回報後，主 session **自己 Read 一張關鍵截圖**確認。
 
 - `Read` 工具讀不了掃描 PDF 的文字，要先用 Ghostscript 轉圖再 Read：
   ```bash
-  gs -sDEVICE=png16m -r110 -dFirstPage=<n> -dLastPage=<m> \
+  "$(command -v gs || command -v gswin64c)" -sDEVICE=png16m -r110 -dFirstPage=<n> -dLastPage=<m> \
      -o "$CLAUDE_JOB_DIR/tmp/<前綴>-%02d.png" "<pdf 路徑>"
   ```
 - 頁碼對照（PDF 頁 ↔ 書上頁）寫在專案設定或參考資料索引裡；引用前仍以頁面上印的頁號為準。
