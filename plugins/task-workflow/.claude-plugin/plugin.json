@@ -1,6 +1,6 @@
 {
   "name": "task-workflow",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "description": "TODO.md 驅動的開發流程：task-plan／task-next／task-release／task-submit-worklog skill、planner-opus、worker-haiku／sonnet／opus 與 verifier-sonnet agent、check-js.sh 與 release-check.sh。",
   "author": { "name": "Frid Hou" },
   "homepage": "https://github.com/frid/claude-task-workflow",

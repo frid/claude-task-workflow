@@ -243,7 +243,7 @@ verifier 回報後，主 session **自己 Read 一張關鍵截圖**確認。
 
 ## 附錄 B — Git 小事（雲端硬碟掛載常見）
 
-- 掛載偶爾殘留 `index.lock`（0 byte）。看到「Another git process seems to be running」時：`ls -la "$(git rev-parse --git-dir)/index.lock"` 確認是 0 byte 且 `pgrep -x git` 沒有程序，才 `rm -f` 重試；每個 worktree 的 git-dir 不同（`.git/worktrees/<名>/index.lock`），要用 `git rev-parse --git-dir` 找。不是 0 byte 或有程序在跑就等幾秒重試，不要硬刪。
+- 掛載偶爾殘留 `index.lock`（0 byte）。看到「Another git process seems to be running」時：在該 worktree 執行 `"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/claude-task-workflow/plugins/task-workflow}/tools/clear-stale-lock.sh"`——它用 `git rev-parse --git-dir` 找到該 worktree 的鎖（`.git/worktrees/<名>/index.lock`），跨平台判斷有沒有 git 在跑（Linux／WSL 用 pgrep，Windows Git Bash 用 tasklist），確定沒有才刪；有程序在跑或判斷不了就 exit 2、不刪。exit 2 時等幾秒重試，不要硬刪；**不要**自己寫 `pgrep … || rm -f`（Windows 沒有 pgrep，會變成必刪）。
 - `tools/release-task.sh`（或同類收尾腳本）若在 `git commit` 那步被鎖擋下，TODO 已勾、檔案已 stage：清鎖後手動 `git commit -F`，不要重跑腳本（會重複勾 TODO）。
 - `sed -i` 在該掛載會印「preserving permissions … Operation not permitted」，改動仍生效，可忽略；改檔優先用 python 或 Edit 工具。
 - `git push -u` 在該掛載會印 chmod 警告，push 本身成功，用 `git ls-remote` 確認即可。

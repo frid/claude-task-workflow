@@ -53,6 +53,10 @@ fi
 
 short() { printf "%.7s" "$1"; }
 
+# 跨平台 git 程序偵測（git_pids：0＝偵測成功、2＝無法偵測）；缺 lib 時一律視為無法偵測 → [a] 不刪 lock
+# shellcheck source=lib/procs.sh
+. "$(cd "$(dirname "$0")" && pwd)/lib/procs.sh" 2>/dev/null || git_pids() { return 2; }
+
 is_drvfs() {  # 路徑在 /mnt/<一個字母>/ 底下（WSL DrvFs，Google Drive 掛載在這）
   case "$1" in /mnt/[a-z]/*|/mnt/[a-z]) return 0;; esac
   [ "${DOCTOR_ASSUME_DRVFS:-0}" = 1 ]
@@ -113,7 +117,6 @@ list_worktree_paths() {  # 由 porcelain 列出非主 checkout 的 worktree 路�
 }
 
 # ---------- [a] index.lock ----------
-git_procs() { pgrep -x git 2>/dev/null | tr '\n' ' '; }
 check_locks() {
   [ -z "$GIT_DIR" ] && return
   local locks=() d
@@ -126,24 +129,30 @@ check_locks() {
   if [ ${#locks[@]} -eq 0 ]; then ok "[a] 沒有殘留的 git lock 檔"; return; fi
   local f
   for f in "${locks[@]}"; do
-    local size age procs
+    local size age procs det
     size=$(stat -c %s "$f" 2>/dev/null || echo ?)
     age=$(( $(date +%s) - $(stat -c %Y "$f" 2>/dev/null || date +%s) ))
-    procs=$(git_procs)
-    if [ -n "$procs" ]; then
+    procs=$(git_pids); det=$?
+    if [ $det -eq 0 ] && [ -n "${procs// /}" ]; then
       # 退避等待：1,2,4,8 秒，期間 git 程序結束且 lock 消失就算正常
       local wait=1 total=0
-      while [ -n "$procs" ] && [ $total -lt 15 ]; do
+      while [ $det -eq 0 ] && [ -n "${procs// /}" ] && [ $total -lt 15 ]; do
         sleep $wait; total=$((total+wait)); wait=$((wait*2))
         [ -e "$f" ] || break
-        procs=$(git_procs)
+        procs=$(git_pids); det=$?
       done
       if [ ! -e "$f" ]; then ok "[a] $f 在等待 ${total}s 後由 git 自行釋放"; continue; fi
-      if [ -n "$procs" ]; then
-        fail "[a] $f 仍被持有（git PID：$procs；等了 ${total}s）"; hint "等該 git 程序結束，或確認是殭屍程序後 kill 再重跑 doctor --fix"; continue
+      if [ $det -eq 0 ] && [ -n "${procs// /}" ]; then
+        fail "[a] $f 仍被持有（git PID：${procs% }；等了 ${total}s）"; hint "等該 git 程序結束，或確認是殭屍程序後 kill 再重跑 doctor --fix"; continue
       fi
     fi
-    # 走到這裡：沒有任何 git 程序存活 → 殘留
+    if [ $det -ne 0 ]; then
+      # 無法判斷 ≠ 沒有 git 在跑：兩種模式都不刪
+      warn "[a] 殘留 lock：$f（${size} byte，${age}s 前）；無法判斷是否有 git 程序（pgrep／tasklist／ps -W 都不能用），不自動刪除"
+      hint "確認沒有 git 在跑後手動 rm -f \"$f\""
+      continue
+    fi
+    # 走到這裡：確定沒有任何 git 程序存活 → 殘留
     if [ "$MODE" = fix ]; then
       rm -f -- "$f" && fixed "[a] 移除殘留 lock：$f（${size} byte，${age}s 前；無 git 程序）" || fail "[a] 無法移除 $f"
     else

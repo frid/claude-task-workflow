@@ -97,7 +97,7 @@ git push -u origin "$(git branch --show-current)"
 在 **dev 的 worktree**（通常是 `.claude/worktrees/dev`）執行：
 
 ```bash
-pgrep -a git || rm -f "$(git rev-parse --git-dir)/index.lock"   # 清掛載殘留鎖
+"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/claude-task-workflow/plugins/task-workflow}/tools/clear-stale-lock.sh"   # 清殘留鎖：確定沒有 git 在跑才刪（跨平台；判斷不了就 exit 2、不刪）——不要寫成 `pgrep … || rm -f`，Windows 沒有 pgrep 會變成必刪
 git merge --no-ff <branch> -m "Merge <branch> into dev：<代號> <摘要>
 
 Co-Authored-By: ..."
