@@ -1,6 +1,6 @@
-"""驗收契約：殘留 git lock 的安全清除（1.9.2，WIN-01）。
+"""驗收契約：殘留 git lock 的安全清除（1.10.3，WIN-01）。
 
-來源：Windows Git Bash 沒有 pgrep。1.9.1 以前 git-guard／doctor [a]／task-release 都以
+來源：Windows Git Bash 沒有 pgrep。1.10.2 以前 git-guard／doctor [a]／task-release 都以
 `pgrep -x git` 判斷，pgrep 不存在 → 判成「沒有 git 在跑」→ 刪掉活著的 git 持有的 index.lock
 （實測：背景跑 git.exe 時 guard 照樣刪鎖）。
 修正：tools/lib/procs.sh 的 git_pids 依序用 pgrep／tasklist／ps -W；全部不能用時回報「無法判斷」，

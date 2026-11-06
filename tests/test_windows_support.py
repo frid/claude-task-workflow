@@ -1,4 +1,4 @@
-"""驗收契約：Windows 支援（1.10.0，WIN-02～WIN-08，issue #5～#11）。
+"""驗收契約：Windows 支援（1.11.0，WIN-02～WIN-08，issue #5～#11）。
 
 每節對應一個 WIN 項目。行為測試在 Windows 上需要 Git for Windows 的 bash
 （自動尋找；或以環境變數 DOCTOR_BASH 指定），沒有 bash 時跳過；靜態檢查不需要 bash。
