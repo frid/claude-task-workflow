@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # git-guard.sh — PreToolUse(Bash) 輕量守護：只在指令含 git 時動作
-#   1. 殘留 index.lock：無 git 程序持有 → 直接移除（退避等待最多 ~7s）；仍被持有 → exit 2 擋下並說明
+#   1. 殘留 index.lock：確定無 git 程序 → 移除（退避等待最多 ~7s）；仍被持有或無法判斷 → exit 2 擋下並說明
+#      （程序偵測跨平台：pgrep／Windows tasklist／ps -W，見 tools/lib/procs.sh）
 #   2. dubious ownership：git 在 cwd 打不開 → exit 2 擋下，附確切的 safe.directory 指令
 # stdin：Claude Code hook JSON（tool_input.command、cwd）。不依賴 jq：jq → python3 → node → sed 擇一。
 # exit 0 放行；exit 2 擋下（stderr 會回給 Claude）。永不超過幾秒。
@@ -39,19 +40,13 @@ GIT_DIR=$(cd "$CWD" && cd "$GIT_DIR" && pwd)
 # ---- index.lock ----
 LOCK="$GIT_DIR/index.lock"
 [ -e "$LOCK" ] || exit 0
-wait=1; total=0
-while pgrep -x git >/dev/null 2>&1 && [ $total -lt 7 ]; do
-  sleep $wait; total=$((total+wait)); wait=$((wait*2))
-  [ -e "$LOCK" ] || exit 0
-done
-if pgrep -x git >/dev/null 2>&1; then
-  echo "[git-guard] $LOCK 仍被 git 程序持有（PID $(pgrep -x git | tr '\n' ' ')；已等 ${total}s）。等它結束再重試，不要 rm。" >&2
-  exit 2
+# 是否有 git 在跑：跨平台判斷（pgrep／tasklist／ps -W），判斷不了就不刪 → 見 tools/lib/procs.sh
+LIB="$(cd "$(dirname "$0")/.." && pwd)/tools/lib/procs.sh"
+if [ -f "$LIB" ]; then
+  # shellcheck source=../tools/lib/procs.sh
+  . "$LIB"
+  remove_stale_lock "$LOCK" 7
+  exit $?
 fi
-SIZE=$(stat -c %s "$LOCK" 2>/dev/null || echo ?)
-if rm -f -- "$LOCK"; then
-  echo "[git-guard] 已移除殘留 $LOCK（${SIZE} byte，無 git 程序）；放行。" >&2
-  exit 0
-fi
-echo "[git-guard] 無法移除 $LOCK，請手動處理。" >&2
+echo "[git-guard] 缺 $LIB，無法判斷 $LOCK 是否殘留；不刪。確認沒有 git 在跑後再手動刪。" >&2
 exit 2
