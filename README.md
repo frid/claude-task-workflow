@@ -50,6 +50,7 @@ Claude Code plugin `task-workflow`：TODO.md 驅動的開發流程。`task-plan`
 
 ## 版本
 
+- 1.9.1（2026-11-06）：修 `doctor.sh` [c] 在 Windows（Git Bash）誤報 worktree 指標失效——`D:/…` 磁碟代號路徑被當相對路徑；新增 `is_abs_path`／`norm_path`（cygpath 統一 `D:/x` 與 `/d/x` 再去重），去除 gitdir 的 CR；絕對路徑計數也認得磁碟代號；新增 `tests/test_doctor_worktree_paths.py`。
 - 1.9.0（2026-11-05）：新增 `planner-opus` agent（固定 opus），task-next 步驟 3c 改派它、prompt 只寫任務本身；不再寫死 Playwright／`npm test`，改讀設定的「測試指令」「驗收契約檔」；設定範本加 6 項（測試指令、驗收契約檔、planner 可寫範圍、測試隔離、敏感資料、git 身分）；worker／verifier 比對所有被改 spec 的 hash；新增 `tests/test_planner_opus.py`。
 - 1.8.0（2026-11-03）：新增 `task-submit-worklog` skill（PA 工作紀錄寄送／彙整，欄位規格 pa-worklog/v1；YAML 驗證改用有 PyYAML 的 conda NAS python）；新增 `tests/test_task_submit_worklog.py`。
 - 1.7.1（2026-10-28）：task-next 步驟 6 補 ff merge 後核對（未追蹤檔會讓 ff 靜默 Aborting）。

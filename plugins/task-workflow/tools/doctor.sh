@@ -97,6 +97,16 @@ check_ownership() {
   fi
 }
 
+is_abs_path() {  # 絕對路徑：POSIX「/…」或 Windows 磁碟代號「X:/…」「X:\…」（Git for Windows 寫進 gitdir 的格式）
+  case "$1" in /*|[A-Za-z]:/*|[A-Za-z]:\\*) return 0;; esac
+  return 1
+}
+
+norm_path() {  # 統一路徑寫法供去重：Git Bash 有 cygpath 時 D:/x 與 /d/x 都轉成 /d/x；其他平台原樣輸出
+  if command -v cygpath >/dev/null 2>&1; then cygpath -u -- "$1" 2>/dev/null || printf '%s\n' "$1"
+  else printf '%s\n' "$1"; fi
+}
+
 list_worktree_paths() {  # 由 porcelain 列出非主 checkout 的 worktree 路徑（不含 bare/prunable 判斷）
   [ -z "$GIT_DIR" ] && return
   git -C "$REPO" worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p' | tail -n +2
@@ -149,28 +159,28 @@ check_worktrees() {
   # 方向 1：.git/worktrees/<n>/gitdir → 該 worktree 的 .git 檔是否存在
   for n in "$COMMON_DIR"/worktrees/*/; do
     [ -d "$n" ] || continue
-    gd=$(cat "$n/gitdir" 2>/dev/null || true)
+    gd=$(tr -d '\r' < "$n/gitdir" 2>/dev/null || true)
     [ -z "$gd" ] && { broken+=("$(basename "$n")：gitdir 檔空白"); continue; }
-    case "$gd" in /*) target="$gd";; *) target="$n/$gd";; esac
+    if is_abs_path "$gd"; then target="$gd"; else target="$n/$gd"; fi
     [ -e "$target" ] || broken+=("$(basename "$n")：gitdir 指向不存在的 $gd")
   done
   # 方向 2：各 worktree 目錄的 .git 檔 → .git/worktrees/<n> 是否存在
   local candidates=() c wts=()
   mapfile -t wts < <(list_worktree_paths)
   for c in "${wts[@]}" "$(dirname "$COMMON_DIR")"/.claude/worktrees/*; do
-    [ -d "$c" ] && [ -f "$c/.git" ] && candidates+=("$c")
+    [ -d "$c" ] && [ -f "$c/.git" ] && candidates+=("$(norm_path "$c")")
   done
-  # 去重
-  mapfile -t candidates < <(printf '%s\n' "${candidates[@]}" | awk '!seen[$0]++')
+  # 去重（已 norm_path，D:/x 與 /d/x 視為同一個）
+  mapfile -t candidates < <(printf '%s\n' "${candidates[@]}" | awk 'NF && !seen[$0]++')
   for c in "${candidates[@]}"; do
     [ -f "$c/.git" ] || continue
-    gd=$(sed -n 's/^gitdir: //p' "$c/.git")
-    case "$gd" in /*) target="$gd";; *) target="$c/$gd";; esac
+    gd=$(sed -n 's/^gitdir: //p' "$c/.git" | tr -d '\r')
+    if is_abs_path "$gd"; then target="$gd"; else target="$c/$gd"; fi
     [ -d "$target" ] || broken+=("$(basename "$c")：.git 指向不存在的 $gd")
   done
   # 相對 vs 絕對
   local abs=0
-  for n in "$COMMON_DIR"/worktrees/*/gitdir; do [ -f "$n" ] && grep -q '^/' "$n" && abs=$((abs+1)); done
+  for n in "$COMMON_DIR"/worktrees/*/gitdir; do [ -f "$n" ] && grep -qE '^(/|[A-Za-z]:[/\\])' "$n" && abs=$((abs+1)); done
   local rel_cfg; rel_cfg=$(git -C "$REPO" config --get worktree.useRelativePaths 2>/dev/null || echo unset)
 
   if [ ${#broken[@]} -eq 0 ]; then
