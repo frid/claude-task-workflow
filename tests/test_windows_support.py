@@ -258,3 +258,55 @@ def test_w05_explore_shots_uses_dirname():
     t = _read(TOOLS / "explore-shots.mjs")
     assert "replace(/\/index\.html$/" not in t, "仍以 regex 去掉 /index.html（Windows 反斜線比對不到）"
     assert re.search(r"\bdirname\(v\.file\)", t)
+
+
+# ---------------- WIN-08：雲端磁碟偵測、hook 精簡、node_modules 不用 junction ----------------
+def _doctor_fn(fn_call, env_extra=None):
+    """只 source doctor.sh 的函式（不執行檢查）：擷取 is_drvfs 等定義後呼叫。"""
+    d = (TOOLS / "doctor.sh").as_posix()
+    script = (f'eval "$(sed -n \'/^is_drvfs() {{/,/^}}/p\' "{d}")"; {fn_call}')
+    return _bash(script, env_extra)
+
+
+@needs_bash
+@pytest.mark.parametrize("path,letters,expect", [
+    ("/mnt/g/proj", "", 0),
+    ("/g/proj", "G", 0), ("G:/proj", "g", 0), ("G:\proj", "G H", 0),
+    ("/d/proj", "G", 1), ("D:/proj", "", 1), ("/home/u/proj", "G", 1),
+])
+def test_w08_is_drvfs_drive_letters(path, letters, expect):
+    r = _doctor_fn(f'is_drvfs "{path}"; echo "rc=$?"', {"DOCTOR_DRIVE_LETTERS": letters, "DOCTOR_ASSUME_DRVFS": "0"})
+    assert f"rc={expect}" in r.stdout, (path, letters, r.stdout, r.stderr)
+
+
+def test_w08_messages_platform_neutral():
+    d = _read(TOOLS / "doctor.sh")
+    assert "repo 不在 /mnt 掛載上" not in d and "（/mnt 掛載）" not in d
+    assert "/mnt 掛載的 Windows 權限" not in _read(PLUGIN / "hooks" / "git-guard.sh")
+
+
+def test_w08_no_junction_for_node_modules():
+    for p in (PLUGIN / "skills" / "task-next" / "SKILL.md", PLUGIN / "agents" / "verifier-sonnet.md"):
+        t = _read(p)
+        assert "mklink /J" not in t, f"{p.name}：junction 會讓 git worktree remove --force 刪到來源"
+        assert "不要用 junction" in t, f"{p.name} 應警告不要用 junction"
+
+
+@needs_bash
+@pytest.mark.skipif(os.name != "nt", reason="Windows hook 模式專屬")
+@pytest.mark.skipif(not shutil.which("git"), reason="需要 git")
+def test_w08_windows_hook_skips_drive_sync_unless_cloud(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    (repo / "TODO.md").write_text("# TODO\n", encoding="utf-8")
+    doctor = (TOOLS / "doctor.sh").as_posix()
+    # 非 hook：[d] 照常跑
+    r = _bash(f'"{doctor}" --check --no-fetch --repo "{repo.as_posix()}"')
+    assert "[d] TODO.md 工作區=" in r.stdout, r.stdout
+    # hook＋不在雲端：略過；hook＋指定該磁碟為雲端：照跑
+    drive = repo.as_posix()[0]
+    src = Path(doctor).read_text(encoding="utf-8")
+    assert "Windows hook 模式：repo 不在雲端掛載，略過同步比對" in src
+    r = _bash(f'"{doctor}" --check --hook --no-fetch --repo "{repo.as_posix()}"', {"DOCTOR_DRIVE_LETTERS": drive})
+    assert "環境醫生" in r.stdout, r.stdout + r.stderr

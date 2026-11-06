@@ -34,7 +34,7 @@ CWD=$(json_get cwd); [ -d "${CWD:-}" ] || CWD="$PWD"
 ERR=$(git -C "$CWD" rev-parse --git-dir 2>&1 >/dev/null)
 if printf '%s' "$ERR" | grep -q "dubious ownership"; then
   P=$(printf '%s' "$ERR" | sed -n "s/.*repository at '\([^']*\)'.*/\1/p" | head -1)
-  echo "[git-guard] git 回報 dubious ownership（/mnt 掛載的 Windows 權限）。先執行這一行再重試：" >&2
+  echo "[git-guard] git 回報 dubious ownership（repo 擁有者和目前使用者不同：常見於 WSL /mnt 掛載、雲端硬碟、或別的 Windows 帳號建立的 repo）。先執行這一行再重試：" >&2
   echo "git config --global --add safe.directory \"${P:-$CWD}\"" >&2
   exit 2
 fi

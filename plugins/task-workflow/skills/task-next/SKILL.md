@@ -129,7 +129,7 @@ git branch --show-current
 
 **3c 派 planner 寫 spec（測試先行，點頭後第一件事）**：
 
-- 開這項任務的 worktree（從最新 dev 分出，`tdd-<代號>`）；UI 專案確認裡面有 `node_modules`（雲端掛載不能 symlink → 從本機安裝目錄 `cp -rL --no-preserve=links`）。
+- 開這項任務的 worktree（從最新 dev 分出，`tdd-<代號>`）；UI 專案確認裡面有 `node_modules`（雲端掛載不能 symlink → 從本機安裝目錄 `cp -rL --no-preserve=links`；Windows 上複製很慢時，改在 worktree 裡跑 `npm ci`。**不要用 junction／symlink 連到來源的 node_modules**：實測 `git worktree remove --force` 會順著 junction 把來源的 node_modules 內容一起刪掉）。
 - 派 `subagent_type: task-workflow:planner-opus`（frontmatter 已固定 opus，**不另傳 `model`**）。可寫範圍、斷言寫法（UI／CLI／函式庫三類）、先紅標準、隔離與資安、git 身分、回報格式都已寫在 agent 定義與專案設定，**prompt 只寫任務本身**：
   - worktree 絕對路徑與分支名、契約檔路徑
   - TODO 原文與附圖路徑、使用者決定（或批次模式下主 session 的決定）
