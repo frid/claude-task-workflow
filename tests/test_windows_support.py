@@ -57,3 +57,25 @@ def test_w02_hooks_cover_powershell_and_use_bash():
     for ev in ("SessionStart", "PreToolUse"):
         cmd = h[ev][0]["hooks"][0]["command"]
         assert cmd.startswith('bash "${CLAUDE_PLUGIN_ROOT}/'), f"{ev} 應以 bash 明確執行：{cmd}"
+
+
+# ---------------- WIN-07：.gitattributes、check-js 不得假 PASS ----------------
+def test_w07_gitattributes_forces_lf_for_scripts():
+    t = _read(ROOT / ".gitattributes")
+    for ext in ("sh", "mjs", "py"):
+        assert re.search(rf"^\*\.{ext}\s+text\s+eol=lf", t, re.M), f"*.{ext} 應 eol=lf"
+
+
+@needs_bash
+@pytest.mark.skipif(not shutil.which("node"), reason="需要 node")
+def test_w07_check_js_fails_on_syntax_error(tmp_path):
+    bad = tmp_path / "bad.html"
+    bad.write_text("<html><script>let x = ;</script></html>", encoding="utf-8")
+    good = tmp_path / "good.html"
+    good.write_text("<html><script>let x = 1;</script></html>", encoding="utf-8")
+    cj = (TOOLS / "check-js.sh").as_posix()
+    env = {"CLAUDE_JOB_DIR": tmp_path.as_posix()}
+    r = _bash(f'"{cj}" "{bad.as_posix()}"', env)
+    assert r.returncode != 0, f"語法錯卻 exit 0：{r.stdout}{r.stderr}"
+    r = _bash(f'"{cj}" "{good.as_posix()}"', env)
+    assert r.returncode == 0 and "JS OK" in r.stdout, r.stdout + r.stderr

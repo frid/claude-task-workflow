@@ -1,0 +1,13 @@
+# 腳本與設定一律以 LF checkout：Windows 上 core.autocrlf=true 時，同一份 checkout 給 WSL／Linux 跑會出現 `bash\r: No such file`
+* text=auto
+*.sh   text eol=lf
+*.mjs  text eol=lf
+*.js   text eol=lf
+*.py   text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.yaml text eol=lf
+*.yml  text eol=lf
+*.png  binary
+*.jpg  binary
+*.pdf  binary

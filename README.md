@@ -38,6 +38,22 @@ Claude Code plugin `task-workflow`：TODO.md 驅動的開發流程。`task-plan`
 }
 ```
 
+安裝或啟用後要**重開 session** 才會載入 skill／agent／hook。
+
+## 平台需求
+
+| 平台 | 需要 | 安裝 |
+|---|---|---|
+| Linux／WSL | bash、git、jq、node、python3；選配 ghostscript、google-chrome | `sudo apt-get install -y jq nodejs python3 ghostscript` |
+| macOS | 同上 | `brew install jq node python ghostscript` |
+| Windows | **Git for Windows**（提供 Git Bash；hook 與 tools/*.sh 都在 Git Bash 執行）、jq、Node.js、Python 3；選配 Ghostscript、Chrome | `winget install Git.Git jqlang.jq OpenJS.NodeJS.LTS Python.Python.3.12`（選配：`winget install ArtifexSoftware.GhostScript Google.Chrome`） |
+
+Windows 注意事項：
+
+- 裝完要**完全重開** Claude Code（含背景 daemon：`claude daemon stop --any`），新的 PATH 才會生效。
+- Python 3 的 `python3` 可能是 Microsoft Store 的空殼；工具會依序試 `python3`、`python`、`py -3`，並實際執行確認。
+- `tools/doctor.sh --check` 會列出缺少的套件和該平台的安裝指令。
+
 ## 新專案要做的事
 
 1. 把 `templates/CLAUDE.md.section` 貼進專案 `CLAUDE.md`，填好每一項（主程式檔、日期標記、舊存檔相容方式、資料慣例…）。skill／agent 都靠這一節知道專案細節。
