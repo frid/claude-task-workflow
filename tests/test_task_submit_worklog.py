@@ -1,12 +1,14 @@
 """驗收契約：task-submit-worklog skill（來源需求：FolderScanner repo TODO WF-01）。
 
-執行：/home/nas/miniconda3/envs/NAS/bin/python -m pytest -q -p no:cacheprovider tests/
+執行：python -m pytest -q -p no:cacheprovider tests/（需要 PyYAML；BN-RD-AIServer 可用 /home/nas/miniconda3/envs/NAS/bin/python）
 """
 import json
 import re
 from pathlib import Path
 
-import yaml
+import pytest
+
+yaml = pytest.importorskip("yaml", reason="需要 PyYAML：python -m pip install --user pyyaml")
 
 ROOT = Path(__file__).resolve().parents[1]
 PLUGIN = ROOT / "plugins" / "task-workflow"

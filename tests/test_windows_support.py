@@ -175,3 +175,42 @@ def test_w04_doctor_missing_node_hints_winget(tmp_path):
     assert "缺套件：node" in out, out
     assert "winget install OpenJS.NodeJS.LTS" in out, out
     assert "apt-get" not in out, out
+
+
+# ---------------- WIN-06：worklog YAML 驗證不綁平台、UTF-8 ----------------
+VALIDATE = TOOLS / "validate-yaml.sh"
+
+
+@needs_bash
+def test_w06_validate_yaml_utf8_and_exit_codes(tmp_path):
+    pytest.importorskip("yaml")  # 讓 validate-yaml 用目前這個有 PyYAML 的 python
+    import sys
+    env = {"TW_YAML_PY": Path(sys.executable).as_posix()}
+    good = tmp_path / "good.yaml"
+    good.write_text('schema: pa-worklog/v1\nsummary: "完成 Windows 支援：測試 ✓"\nitems:\n  - title: 中文標題\n',
+                    encoding="utf-8")
+    bad = tmp_path / "bad.yaml"
+    bad.write_text("summary: [未關閉\n", encoding="utf-8")
+    v = VALIDATE.as_posix()
+    r = _bash(f'"{v}" "{good.as_posix()}"', env)
+    assert r.returncode == 0 and "YAML OK" in r.stdout, r.stdout + r.stderr
+    r = _bash(f'"{v}" "{bad.as_posix()}"', env)
+    assert r.returncode == 1, r.stdout + r.stderr
+
+
+@needs_bash
+@pytest.mark.skipif(Path("/home/nas/miniconda3/envs/NAS/bin/python").exists(), reason="NAS 機器上一定找得到 PyYAML")
+def test_w06_validate_yaml_without_pyyaml_is_not_a_pass(tmp_path):
+    f = tmp_path / "x.yaml"
+    f.write_text("a: 1\n", encoding="utf-8")
+    r = _bash(f'"{VALIDATE.as_posix()}" "{f.as_posix()}"',
+              {"TW_YAML_PY": "", "TW_PY_CANDIDATES": "nonexistent_py_a|nonexistent_py_b"})
+    assert r.returncode == 3, r.stdout + r.stderr
+    assert "pip install --user pyyaml" in r.stderr
+
+
+def test_w06_skill_uses_validate_script_not_stdin():
+    t = _read(PLUGIN / "skills" / "task-submit-worklog" / "SKILL.md")
+    assert "tools/validate-yaml.sh" in t
+    code = "\n".join(re.findall(r"```bash\n(.*?)```", t, re.S))
+    assert "safe_load(sys.stdin)" not in code, "bash 區塊仍教 stdin 讀 YAML（cp950 會誤判）"

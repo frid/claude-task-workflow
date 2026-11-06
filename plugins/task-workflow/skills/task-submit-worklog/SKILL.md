@@ -208,13 +208,15 @@ security_check: passed
 ---WORKLOG-END---
 ```
 
-YAML 注意：含冒號或特殊字元的字串加雙引號；寄出前確認可正確解析。Claude Code 端驗證（系統 python3 未必有 PyYAML；BN-RD-AIServer 上用已裝 PyYAML 的 conda `NAS`）：
+YAML 注意：含冒號或特殊字元的字串加雙引號；寄出前確認可正確解析。Claude Code 端驗證（Linux／WSL／macOS／Windows Git Bash 通用）：
 
 ```bash
-/home/nas/miniconda3/envs/NAS/bin/python -c "import yaml,sys;yaml.safe_load(sys.stdin)" < 區塊.yaml
+"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/claude-task-workflow/plugins/task-workflow}/tools/validate-yaml.sh" 區塊.yaml
 ```
 
-其他機器改用該機有 PyYAML 的 python（`python3 -c "import yaml"` 先確認）；都沒有時逐欄人工核對並在回報中說明未經解析器驗證。
+- 它會依序找有 PyYAML 的 Python：環境變數 `TW_YAML_PY` → BN-RD-AIServer 的 conda `NAS`（`/home/nas/miniconda3/envs/NAS/bin/python`，存在才用）→ 本機 `python3`／`python`／`py -3`；一律以 UTF-8 開檔（Windows cp950 下不會把中文誤判成錯誤）。
+- exit 0＝通過；1＝YAML 有錯，修正後重驗；3＝沒有可用的 PyYAML：照提示 `python -m pip install --user pyyaml`，或逐欄人工核對並在回報中說明未經解析器驗證。
+- 不要用 `python -c "…yaml.safe_load(sys.stdin)" < 區塊.yaml`：Windows 上 stdin 以 cp950 解碼，合法的中文 YAML 也會報 `ReaderError`。
 
 ### A5. 寄出（依可用工具降級）
 

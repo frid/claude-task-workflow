@@ -3,13 +3,15 @@
 來源：FolderScanner repo session 分析（2026-11-05）——planner 17 次皆以 general-purpose 派出、
 規則每次重寫於 prompt；改為固定 opus 的獨立 agent，專案專屬值改由 CLAUDE.md 設定節提供。
 
-執行：/home/nas/miniconda3/envs/NAS/bin/python -m pytest -q -p no:cacheprovider tests/
+執行：python -m pytest -q -p no:cacheprovider tests/（需要 PyYAML；BN-RD-AIServer 可用 /home/nas/miniconda3/envs/NAS/bin/python）
 """
 import json
 import re
 from pathlib import Path
 
-import yaml
+import pytest
+
+yaml = pytest.importorskip("yaml", reason="需要 PyYAML：python -m pip install --user pyyaml")
 
 ROOT = Path(__file__).resolve().parents[1]
 PLUGIN = ROOT / "plugins" / "task-workflow"
