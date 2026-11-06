@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# git-guard.sh — PreToolUse(Bash) 輕量守護：只在指令含 git 時動作
+# git-guard.sh — PreToolUse(Bash|PowerShell) 輕量守護：只在指令含 git 時動作（PowerShell 的 git 指令也經過這裡）
 #   1. 殘留 index.lock：確定無 git 程序 → 移除（退避等待最多 ~7s）；仍被持有或無法判斷 → exit 2 擋下並說明
 #      （程序偵測跨平台：pgrep／Windows tasklist／ps -W，見 tools/lib/procs.sh）
 #   2. dubious ownership：git 在 cwd 打不開 → exit 2 擋下，附確切的 safe.directory 指令
