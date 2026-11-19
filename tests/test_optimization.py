@@ -142,6 +142,15 @@ def test_stats_privacy(fake_root):
     assert "abc123" not in out and "--token" not in out
 
 
+# O3b：--project 接受專案路徑（/home/demo → -home-demo，含其 worktree），不必寫以 - 開頭的資料夾名
+def test_stats_project_path(fake_root):
+    r = _run_stats(fake_root, "--project", "/home/demo")
+    assert r.returncode == 0, r.stderr
+    assert re.search(r"\| 測試指令次數／合計時間 \| 1／30s \|", r.stdout)
+    r = _run_stats(fake_root, "--project", "/home/other")
+    assert r.returncode == 3
+
+
 # O4：期間外沒有紀錄 → exit 3
 def test_stats_empty_period(fake_root):
     r = subprocess.run([sys.executable, "-X", "utf8", str(STATS), "--root", str(fake_root), "--since", "2020-01-01", "--until", "2020-01-02"],
