@@ -1,4 +1,4 @@
-"""驗收契約：OPT-01 optimization skill 與 1.12.0 流程優化。
+"""驗收契約：OPT-01 workflow-optimization skill 與 1.12.0 流程優化。
 
 來源：2026-11-13～19 對話紀錄耗時分析（5 個專案、72 個紀錄檔）——
 planner-opus 17 次共 2.1h；測試指令 326 次共 1.2h（frontpage 一支測試等 Chrome keyring 25 秒）；
@@ -18,7 +18,9 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 PLUGIN = ROOT / "plugins" / "task-workflow"
-SKILL = PLUGIN / "skills" / "optimization" / "SKILL.md"
+SKILL = PLUGIN / "skills" / "workflow-optimization" / "SKILL.md"
+CONCEPTS = PLUGIN / "skills" / "workflow-optimization" / "concepts.md"
+TEMPLATE = PLUGIN / "templates" / "CLAUDE.md.section"
 STATS = PLUGIN / "tools" / "transcript-stats.py"
 VERIFY = PLUGIN / "tools" / "verify-clean.sh"
 AGENTS = PLUGIN / "agents"
@@ -37,16 +39,34 @@ def _fm(p):
     return m.group(1)
 
 
-# O1：skill 存在、名稱 optimization、觸發詞與硬規則
+# O1：skill 存在、名稱 workflow-optimization、觸發詞與硬規則；舊名 optimization 已移除
 def test_skill_frontmatter_and_rules():
-    assert SKILL.exists(), "缺 skills/optimization/SKILL.md"
+    assert SKILL.exists(), "缺 skills/workflow-optimization/SKILL.md"
+    assert not (PLUGIN / "skills" / "optimization").exists(), "舊名 skills/optimization 應改名"
     fm = _fm(SKILL)
-    assert re.search(r"^name: optimization$", fm, re.M)
-    for kw in ("優化流程", "最花時間", "/optimization"):
+    assert re.search(r"^name: workflow-optimization$", fm, re.M)
+    for kw in ("優化流程", "最花時間", "/workflow-optimization"):
         assert kw in fm, f"description 缺觸發詞 {kw}"
     t = _read(SKILL)
-    for kw in ("只讀", "不外傳", "transcript-stats.py", "doc/optimization/", "先量後改", "不 push"):
+    for kw in ("只讀", "不外傳", "transcript-stats.py", "doc/optimization/", "先量後改", "不 push", "concepts.md"):
         assert kw in t, f"SKILL 缺 {kw}"
+
+
+# O1b：通用——不用 task-workflow 的專案也能用：預設只看本專案、報告寫本專案、沒有設定節時的做法
+def test_skill_generic_for_any_project():
+    t = _read(SKILL)
+    assert "--project" in t and "本專案" in t
+    assert "優化報告目錄" in t
+    assert "沒有 `## task-workflow 設定`" in t
+    assert "- 優化報告目錄：" in _read(TEMPLATE)
+
+
+# O1c：概念文件——成本拆解、原則、根因手冊、反模式（不得用放寬守門／權限來減少被擋）
+def test_concepts_doc():
+    assert CONCEPTS.exists(), "缺 skills/workflow-optimization/concepts.md"
+    c = _read(CONCEPTS)
+    for kw in ("模型生成", "工具執行", "等待", "摩擦", "依時間排名", "根因手冊", "防再犯", "反模式", "放寬"):
+        assert kw in c, f"concepts 缺 {kw}"
 
 
 # ---------- transcript-stats.py ----------
@@ -221,13 +241,13 @@ def test_task_next_wiring():
     assert "一個 planner 只寫一項" in t
     assert "一波一個 session" in t
     assert re.search(r"^10\. \*\*主 session 的 Bash", t, re.M)
-    assert "optimization" in t
+    assert "workflow-optimization" in t
 
 
 # O12：README 列出新 skill／工具與 1.12.0；首份報告存在
 def test_readme_and_report():
     readme = _read(ROOT / "README.md")
-    for kw in ("`optimization`", "tools/transcript-stats.py", "tools/verify-clean.sh", "- 1.12.0（"):
+    for kw in ("`workflow-optimization`", "tools/transcript-stats.py", "tools/verify-clean.sh", "- 1.12.0（"):
         assert kw in readme, kw
     reports = sorted((ROOT / "doc" / "optimization").glob("*.md"))
     assert reports, "缺 doc/optimization/*.md"
