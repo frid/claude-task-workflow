@@ -10,14 +10,14 @@ Claude Code plugin `task-workflow`：TODO.md 驅動的開發流程。`task-plan`
 | skill | `task-next` | 接下一項任務：補編號、核對事實、寫計畫、派 planner 寫 spec（先紅）、派 worker 做到綠、派 verifier 乾淨 checkout 重跑、ff 併入 dev |
 | skill | `task-explore` | 探索：一個 UI 任務列 3–4 種變體，各自 worktree 做最小版，截圖量測、並排比較頁，使用者選定後交 task-next |
 | skill | `task-release` | 收尾：勾 TODO、更新日期標記、decisions／pending-checks、commit、push；merge／release 步驟 |
-| skill | `optimization` | 流程優化：分析一段期間的對話紀錄（只讀、不外傳），量出最花時間的環節（模型生成、planner／worker／verifier、測試、被守門擋下、輪詢），找根因、逐一修正並前後量測，報告寫進 `doc/optimization/` |
+| skill | `workflow-optimization` | 流程優化（任何專案可用，預設只看本專案）：分析一段期間的對話紀錄（只讀、不外傳），量出最花時間的環節（模型生成、planner／worker／verifier、測試、被守門擋下、輪詢），依 `concepts.md` 根因手冊找根因、逐一修正並前後量測，報告寫進專案的 `doc/optimization/` |
 | skill | `task-submit-worklog` | PA 工作紀錄（pa-worklog/v2）：各端點把工作整理成固定欄位的信寄給本人（模式 A），PA 統整端以 Gmail 撈回併入週報（模式 B）；專案名稱讀各專案設定、附 ChangeLog 摘要 |
 | agent | `planner-opus` | 寫驗收契約（測試）並證明先紅，只 commit 測試檔；固定 opus，專案細節讀 CLAUDE.md 設定 |
 | agent | `worker-haiku` / `worker-sonnet` / `worker-opus` | 改檔的 worker，依任務輕重選模型 |
 | agent | `verifier-sonnet` | 獨立驗證，不改檔 |
 | tool | `tools/check-js.sh` | 單檔 HTML 抽 `<script>` 跑 `node --check` |
 | tool | `tools/explore-shots.mjs` | task-explore 用：每變體截 1440／375、量溢出／對比／元素數，產 variants.html |
-| tool | `tools/transcript-stats.py` | optimization 用：對話紀錄耗時統計（Markdown；只輸出統計值與指令形狀，不輸出原文） |
+| tool | `tools/transcript-stats.py` | workflow-optimization 用：對話紀錄耗時統計（Markdown；只輸出統計值與指令形狀，不輸出原文） |
 | tool | `tools/verify-clean.sh` | verifier 用：一次呼叫做完乾淨 checkout、複製 node_modules、spec hash 比對、全套測試與清理（避免長串指令被隔離守門擋下） |
 | tool | `tools/release-check.sh` | release 閘門：`npm test` |
 | tool | `tools/clear-stale-lock.sh` | 安全清殘留 `index.lock`：確定沒有 git 在跑才刪（pgrep／Windows tasklist／ps -W；判斷不了就不刪）。git-guard、doctor [a] 共用 `tools/lib/procs.sh` |
@@ -73,7 +73,7 @@ Windows 注意事項：
 
 ## 版本
 
-- 1.12.0（2026-11-19）：**OPT-01 流程優化**——依 2026-11-13～19 對話紀錄耗時分析（5 個專案、72 個紀錄檔；報告 `doc/optimization/2026-11-19.md`）。新增 `optimization` skill 與 `tools/transcript-stats.py`；新增 `tools/verify-clean.sh`，verifier 改用它並加 Write（限暫存）、Bash 規則移到最前（一週被擋約 80 次）；planner 效率規則（一個 planner 只寫一項、契約檔 ≤ 300 行、局部修正、迭代只跑本項）；全部 agent 禁止背景執行再 sleep 輪詢、直接啟動 Chrome 必加 `--password-store=basic --use-mock-keychain`；task-next 平行派 planner、一波一個 session、新增硬規則 10（主 session Bash 一次一個簡單指令）、波末提醒跑 optimization。P7 契約的 task-next 版本斷言改為 ≥ 1.9.0。新增 `tests/test_optimization.py`。
+- 1.12.0（2026-11-19）：**OPT-01 流程優化**——依 2026-11-13～19 對話紀錄耗時分析（5 個專案、72 個紀錄檔；報告 `doc/optimization/2026-11-19.md`）。新增 `workflow-optimization` skill（OPT-02：原名 optimization，通用化為任何專案可用、預設本專案範圍、報告寫專案的「優化報告目錄」；概念與根因手冊在 `concepts.md`；設定範本加「優化報告目錄」）與 `tools/transcript-stats.py`；新增 `tools/verify-clean.sh`，verifier 改用它並加 Write（限暫存）、Bash 規則移到最前（一週被擋約 80 次）；planner 效率規則（一個 planner 只寫一項、契約檔 ≤ 300 行、局部修正、迭代只跑本項）；全部 agent 禁止背景執行再 sleep 輪詢、直接啟動 Chrome 必加 `--password-store=basic --use-mock-keychain`；task-next 平行派 planner、一波一個 session、新增硬規則 10（主 session Bash 一次一個簡單指令）、波末提醒跑 workflow-optimization。P7 契約的 task-next 版本斷言改為 ≥ 1.9.0。新增 `tests/test_optimization.py`。
 - 1.11.0（2026-11-06）：**Windows 支援**（WIN-02～08，#5～#11）——hook 涵蓋 PowerShell、以 `bash` 明確執行；Python 以實際執行挑選（`pick_py`）並一律 `-X utf8`；doctor [e] 依平台給 winget／brew／apt 提示、Ghostscript 跨平台；`find-chrome.sh`／`open-browser.sh` 取代 `google-chrome`／`chrome` alias，explore-shots 改用 `dirname`；worklog 改用 `validate-yaml.sh`、沒有 PyYAML 的測試改為 skip；`.gitattributes` 強制 LF、check-js 語法錯不再 exit 0；`DOCTOR_DRIVE_LETTERS` 雲端磁碟偵測、safe.directory 用 `D:/` 寫法、Windows hook 略過 [d]（SessionStart 4.8s→3.3s）；node_modules 警告勿用 junction。README 新增「平台需求」。新增 `tests/test_windows_support.py`。
 - 1.10.3（2026-11-06）：**WIN-01 lock 安全**——Windows Git Bash 沒有 `pgrep`，舊版 git-guard／doctor [a]／task-release 會把「找不到 pgrep」當成「沒有 git 在跑」而刪掉活著的 git 持有的 `index.lock`。新增 `tools/lib/procs.sh`（`git_pids`：pgrep → tasklist → `ps -W`，全部不能用回報「無法判斷」；`remove_stale_lock`：確定沒有 git 才刪）與 `tools/clear-stale-lock.sh`；git-guard、doctor [a] 改用它，判斷不了一律不刪；task-release、task-next 附錄 B 不再教 `pgrep … || rm -f`。新增 `tests/test_lock_safety.py`。
 - 1.10.2（2026-11-06）：修 `doctor.sh` [c] 在 Windows（Git Bash）誤報 worktree 指標失效——`D:/…` 磁碟代號路徑被當相對路徑；新增 `is_abs_path`／`norm_path`（cygpath 統一 `D:/x` 與 `/d/x` 再去重），去除 gitdir 的 CR；絕對路徑計數也認得磁碟代號；新增 `tests/test_doctor_worktree_paths.py`。

@@ -217,7 +217,7 @@ verifier 回報後，主 session **自己 Read 一張關鍵截圖**確認。
 2. 跑設定裡的 release 閘門（預設 plugin 的 `tools/release-check.sh`，需要 `node_modules`；裝不起來（如雲端掛載權限）就說明略過，改以專案零依賴的回歸腳本為準）。
 3. 建議使用者 tag 或 release：「dev 比 main 多 N 個 commit，建議 release vX.Y.Z」。沒聽到「release」不動 main。
 4. 彙整 `doc/pending-checks.md` 未勾項目給使用者。
-4a. 距上次 `optimization` 報告超過一週（或已跑完 3 波）→ 建議使用者跑 `task-workflow:optimization` 找這段時間最花時間的環節。
+4a. 距上次優化報告（設定的「優化報告目錄」，預設 `doc/optimization/`）超過一週（或已跑完 3 波）→ 建議使用者跑 `task-workflow:workflow-optimization` 找這段時間最花時間的環節。
 5. 還沒做的任務在 `TODO.md` 標清楚（例如前綴「【尚未做】」或「待排程」），並把需要使用者決定的事（會改 PPTX／匯出基準、需舊檔遷移、規格有歧義）單獨列一段。
 
 **最終回報固定格式**（讓只看最後一則訊息的人也看得懂）：
@@ -273,7 +273,7 @@ merge 順序：文件 → 視覺 → 資料結構，衝突由主 session 解。v
 
 | 版號 | 日期 | 變更 |
 |---|---|---|
-| 1.12.0 | 2026-11-19 | 依 2026-11-13～19 對話紀錄耗時分析（optimization skill 首次）：一個 planner 只寫一項、多項平行派；verifier 改用 `tools/verify-clean.sh` 一次做完乾淨 checkout＋spec hash＋全套；硬規則 7 加「一波一個 session」、新增硬規則 10「主 session Bash 一次一個簡單指令」；波末建議定期跑 optimization |
+| 1.12.0 | 2026-11-19 | 依 2026-11-13～19 對話紀錄耗時分析（workflow-optimization skill 首次）：一個 planner 只寫一項、多項平行派；verifier 改用 `tools/verify-clean.sh` 一次做完乾淨 checkout＋spec hash＋全套；硬規則 7 加「一波一個 session」、新增硬規則 10「主 session Bash 一次一個簡單指令」；波末建議定期跑 workflow-optimization |
 | 1.9.0 | 2026-11-05 | 步驟 3c 改派獨立 agent `planner-opus`（固定 opus）：規則移入 agent 定義，prompt 只寫任務本身；不再寫死 Playwright，依設定「測試指令」「驗收契約檔」；記錄並比對所有被改 spec 的 hash（來源：FolderScanner repo session 分析） |
 | 1.7.1 | 2026-10-28 | 步驟 6 補 ff merge 後核對（未追蹤檔會讓 ff 靜默 Aborting；刪分支前確認已含於 dev） |
 | 1.7.0 | 2026-10-27 | 測試先行：硬規則 8–9；步驟 3c 派 planner 寫 `tests/tasks/<代號>.spec.ts` 並證明在 dev 上先紅（量測斷言，不是只缺截圖）；步驟 4 worker 以 spec＋全套＋回歸全綠為完成、≤6 輪、每輪貼實際輸出、不得改 spec、hash 比對；步驟 5 verifier 從乾淨 checkout 重跑並拒收改 spec；步驟 6 只 ff 併入 dev；附錄 C 改為依檔案重疊分波與回報表 |

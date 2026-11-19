@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""task-workflow optimization：對話紀錄耗時統計（只讀）。
+"""task-workflow workflow-optimization：對話紀錄耗時統計（只讀）。
 
 讀 ~/.claude/projects/<專案>/<session>.jsonl 與 <session>/subagents/agent-*.jsonl(+.meta.json)，
 輸出 Markdown 報告：各 session／subagent 類型的掛鐘與模型生成時間、工具耗時排行、測試指令次數、
@@ -9,7 +9,9 @@
 
 用法：
   python3 -X utf8 transcript-stats.py [--since YYYY-MM-DD] [--until YYYY-MM-DD]
-                                      [--root ~/.claude/projects] [--project 子字串] [--json 輸出檔]
+                                      [--root ~/.claude/projects] [--project 專案路徑或資料夾子字串] [--json 輸出檔]
+  --project /home/frontpage 會轉成對話紀錄資料夾名 -home-frontpage（含它的 worktree）；
+  直接給資料夾名時要寫成 --project=-home-frontpage（以 - 開頭）。
   預設 --since 為 7 天前。exit 0；找不到任何紀錄 exit 3。
 """
 import argparse
@@ -95,6 +97,15 @@ def agent_type(path):
         except (OSError, json.JSONDecodeError):
             pass
     return "?", ""
+
+
+def project_key(p):
+    """專案路徑 → 對話紀錄資料夾名（/ . \\ : 換成 -）；不是路徑就當資料夾名子字串原樣用。"""
+    if not p:
+        return None
+    if p.startswith(("/", "~")) or re.match(r"^[A-Za-z]:[\\/]", p):
+        return re.sub(r"[\\/.:]", "-", os.path.expanduser(p).rstrip("/\\"))
+    return p
 
 
 def analyze(root, since, until, project=None):
@@ -197,7 +208,7 @@ def H(s):
 
 
 def summary(R):
-    """固定欄位的指標摘要；欄位名稱不要改，報告靠它逐期比對。"""
+    """固定欄位的指標摘要；欄位名稱不要改，workflow-optimization 報告靠它逐期比對。"""
     subs = collections.defaultdict(list)
     for s in R["subagents"]:
         subs[s["type"].split(":")[-1]].append(s["wall_s"])
@@ -219,7 +230,7 @@ def summary(R):
 
 def report(R, since, until):
     out = [f"# 對話紀錄耗時統計 {since}～{until}", "", f"紀錄檔 {R['files']} 個；主 session {len(R['sessions'])} 個；subagent {len(R['subagents'])} 個；主 session context 峰值 {R['max_ctx']:,} tokens", ""]
-    out += ["## 0. 指標摘要（固定欄位，optimization 報告逐期比對用）", "", "| 指標 | 值 |", "|---|---|"]
+    out += ["## 0. 指標摘要（固定欄位，workflow-optimization 報告逐期比對用）", "", "| 指標 | 值 |", "|---|---|"]
     for k, v in summary(R).items():
         out.append(f"| {k} | {v} |")
     out.append("")
@@ -264,10 +275,10 @@ def main(argv=None):
     ap.add_argument("--root", default=os.path.expanduser("~/.claude/projects"))
     ap.add_argument("--since", default=(datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d"))
     ap.add_argument("--until", default="9999-12-31")
-    ap.add_argument("--project", default=None, help="只看資料夾名含此子字串的專案")
+    ap.add_argument("--project", default=None, help="只看此專案：專案路徑（/home/x）或資料夾名子字串（以 - 開頭時寫 --project=-home-x）")
     ap.add_argument("--json", default=None, help="另存原始統計（JSON）")
     a = ap.parse_args(argv)
-    R = analyze(a.root, a.since, a.until, a.project)
+    R = analyze(a.root, a.since, a.until, project_key(a.project))
     if not R["files"]:
         print(f"找不到 {a.since}～{a.until} 的對話紀錄（{a.root}）", file=sys.stderr)
         return 3
