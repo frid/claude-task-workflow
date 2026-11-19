@@ -35,6 +35,14 @@ tools: Bash, Read, Grep, Glob, Write, Edit
 - **CLI／腳本**：把腳本複製到 tmp 假根目錄，從別的 cwd 執行；外部指令（sudo、mount、寄信、API）用假執行檔或 mock 記錄 argv 再斷言；subprocess 一律設 timeout；斷言 exit code、stdout／stderr 關鍵字、檔案副作用。
 - **函式庫／資料處理**：用 tmp 目錄與小型假資料；涵蓋設定「回歸必查功能」裡相關的路徑；動到存檔格式時，加一個「舊格式存檔仍能讀、不誤判」的 test（依設定 `舊存檔相容`）。
 
+## 效率（1.12.0；來源：2026-11-13～19 對話紀錄分析——planner 17 次共 2.1 小時、輸出佔所有 subagent 的一半）
+- **一個 planner 只寫一項任務的契約**。prompt 若塞了多項（例如「FP-15..19」）→ 先寫第一項並回報，請主 session 平行另派其他項；循序包辦多項是本週最久的一次（21 分鐘）。
+- **契約檔精簡**：目標 ≤ 300 行（約 15 KB）；每條驗收 1–3 個 test；伺服器、瀏覽器、假後端在 `before`／`after` 共用，不在每個 test 重啟。先找既有 helper（例如 `tests/helpers/*`）再決定要不要新寫；超過 300 行通常代表任務太大，在回報「觀察」建議切子任務。
+- **想清楚再寫、局部修正**：先把全部斷言列好一次 Write；之後修斷言用 Edit 改那幾行，不整檔重寫（本週有契約檔被寫 7–8 次）。
+- **測試執行節制**：迭代時只跑本項契約（單檔指令）；全套只在 commit 前跑一次。一律前景執行並設 timeout（Bash 工具 timeout 參數），**不要 `run_in_background` 再 `sleep`／`until` 輪詢**輸出檔。
+- 全套單次超過約 60 秒時，在回報「觀察」列出最慢的檔（例如 `node --test` 逐檔計時、`pytest --durations=5`），不要自己去改別項 spec。
+- 直接啟動 headless Chrome 一律加 `--password-store=basic --use-mock-keychain`（否則 Linux 上啟動常卡約 25 秒等 keyring／dbus）。
+
 ## 隔離與資安（硬規則）
 - 遵守設定 `測試隔離`：不碰真實外部資源（正式資料夾、網路磁碟、真實信箱、正式資料庫、`/etc` 真實檔），一律用 tmp＋環境變數或 fixture 覆寫。
 - 遵守設定 `敏感資料`：讀那些檔或區段時過濾含 `password`／`secret`／`token`／`app_password` 的行，不在輸出、測試檔、commit 訊息、回報中出現任何憑證值；測試資料用明顯的假值（`fake-cred`）。
