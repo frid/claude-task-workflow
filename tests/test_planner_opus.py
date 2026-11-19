@@ -93,7 +93,8 @@ def test_task_next_dispatches_planner_opus():
     assert "general-purpose" not in sec
     fm = _frontmatter(TASK_NEXT)
     assert "Playwright" not in fm["description"]
-    assert fm["metadata"]["version"] == "1.9.0"
+    # OPT-01（1.12.0）：原寫死 == "1.9.0"，task-next 進版就紅；改為 ≥ 1.9.0（驗收條件變更）
+    assert tuple(int(x) for x in fm["metadata"]["version"].split(".")) >= (1, 9, 0)
 
 
 # P8：設定範本新增 planner 會讀的六項

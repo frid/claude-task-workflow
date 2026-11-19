@@ -9,7 +9,7 @@ description: >-
   再說「沒問題就 merge」則每項 PASS 後自行併入 dev。硬規則：一次只做一項；先規劃、等使用者點頭再執行
   （批次模式例外，見步驟 0）；不在 main 上改；使用者沒說「merge」不併入 dev、沒說「release」不上 main。
 metadata:
-  version: "1.9.0"
+  version: "1.12.0"
 ---
 
 # Task Next — 從 TODO.md 接手下一項任務
@@ -29,9 +29,10 @@ metadata:
 4. **使用者沒說「merge」不合併到 `dev`；沒說「release」不合併到 `main`**。授權批次模式的「沒問題就 merge」只涵蓋 dev，`main` 永遠要聽到「release」。
 5. **要刪檔、搬檔、改檔名，或規格有兩種以上合理解讀 → 停下問使用者**（批次模式下：產品層級的取捨自己決定並記進 `doc/decisions.md`，其餘仍停下問）。
 6. **改檔、驗證都交給 subagent**：主 session 只負責讀 TODO、寫計畫、派工、檢查成果、收尾。主 session 不直接改主程式檔，連一行也一樣。`TODO.md`、`doc/*.md`、skill／agent 定義可由主 session 改。
-7. **主 session 用量守在六成內**：超過約 60% → 先收尾 commit，寫 dev-log（步驟 7），提醒使用者 `/clear` 後用 `task-next` 接著做。
+7. **主 session 用量守在六成內**：超過約 60% → 先收尾 commit，寫 dev-log（步驟 7），提醒使用者 `/clear` 後用 `task-next` 接著做。**一波一個 session**：波末寫完 dev-log 就建議 `/clear`，不要把下一波接在同一個 session（1.12.0 前曾有單一 session 跑 20 小時、context 漲到 51 萬 tokens，每一輪都變慢變貴）。
 8. **測試先行**：每項任務先有驗收契約檔（設定的「驗收契約檔」，預設 `tests/tasks/<代號>.spec.ts`），而且要**先證明它在目前 dev 上失敗**（失敗原因必須是可量測斷言，不能只是截圖基準不存在）才派 worker。沒有紅過的 spec 不算驗收。
 9. **spec 是驗收契約，worker 不能改**：planner commit spec 後記下 `git hash-object` 的值；verifier 比對 hash，改了 spec 讓它過關的 commit 一律拒收（只有主 session 判定驗收條件本身寫錯，才由 planner 另開 commit 修 spec，並重新證明「先紅」）。
+10. **主 session 的 Bash 也一次一個簡單指令**：不用 `&&`／`;`／`|` 串 cd、git、heredoc，不用 `git -C` 指向別的 checkout；要寫的內容用 Write／Edit。被隔離守門擋一次就是多一輪來回。
 
 ---
 
@@ -130,7 +131,7 @@ git branch --show-current
 **3c 派 planner 寫 spec（測試先行，點頭後第一件事）**：
 
 - 開這項任務的 worktree（從最新 dev 分出，`tdd-<代號>`）；UI 專案確認裡面有 `node_modules`（雲端掛載不能 symlink → 從本機安裝目錄 `cp -rL --no-preserve=links`；Windows 上複製很慢時，改在 worktree 裡跑 `npm ci`。**不要用 junction／symlink 連到來源的 node_modules**：實測 `git worktree remove --force` 會順著 junction 把來源的 node_modules 內容一起刪掉）。
-- 派 `subagent_type: task-workflow:planner-opus`（frontmatter 已固定 opus，**不另傳 `model`**）。可寫範圍、斷言寫法（UI／CLI／函式庫三類）、先紅標準、隔離與資安、git 身分、回報格式都已寫在 agent 定義與專案設定，**prompt 只寫任務本身**：
+- 派 `subagent_type: task-workflow:planner-opus`（frontmatter 已固定 opus，**不另傳 `model`**）。**一個 planner 只寫一項**；同一波有多項時，在同一則訊息裡同時派多個 planner（各自一項、各自 worktree 或同一波分支上各自的契約檔），不要叫一個 planner 循序寫「XX-15..19」（1.12.0 前最久的一次 21 分鐘）。可寫範圍、斷言寫法（UI／CLI／函式庫三類）、先紅標準、隔離與資安、git 身分、回報格式都已寫在 agent 定義與專案設定，**prompt 只寫任務本身**：
   - worktree 絕對路徑與分支名、契約檔路徑
   - TODO 原文與附圖路徑、使用者決定（或批次模式下主 session 的決定）
   - 驗收斷言草案（條列、編號，例如 A1–A4）與現況線索（函式名、約略行號，註明「可能偏移」）
@@ -179,7 +180,7 @@ worker 回來後：
 
 **改的人不驗自己。** 另派 `subagent_type: verifier-sonnet`（只有 Read／Bash／Grep／Glob）。subagent 不能再開 subagent，一定是主 session 依序派。
 
-verifier prompt 交代：任務代號、計畫中的【驗收】、worker 報告的改動清單與自測腳本路徑（`tools/selftest/<代號>.mjs`）、這項特有的檢查點、專案設定裡的舊存檔相容方式，以及 **TDD 契約**：任務分支名、要比對的 spec hash、乾淨 checkout 的做法（`git worktree add --detach .claude/worktrees/verify-<代號> <分支>`，複製 `node_modules`，跑 `npm test` 全套＋回歸腳本；跑完 `git worktree remove`）。標準四項檢查（語法、舊存檔相容、截圖、回歸）已在 agent 定義裡，不必重抄。
+verifier prompt 交代：任務代號、計畫中的【驗收】、worker 報告的改動清單與自測腳本路徑（`tools/selftest/<代號>.mjs`）、這項特有的檢查點、專案設定裡的舊存檔相容方式，以及 **TDD 契約**——直接給 `tools/verify-clean.sh` 的參數，讓它一次呼叫做完乾淨 checkout、spec hash 比對與全套測試：`--repo <repo 根目錄> --ref <任務分支> --name <代號> --test "<設定的測試指令>" --spec <契約檔>=<hash>`（planner「其他改動」列出的每一支 spec 各一個 `--spec`）`--since <planner 的 spec commit>`；有回歸腳本另外列出。標準四項檢查（語法、舊存檔相容、截圖、回歸）已在 agent 定義裡，不必重抄。
 
 verifier 的 TDD 判定（agent 定義已寫，主 session 只看結果）：spec hash 不同、`git log -p -- tests/tasks/<代號>.spec.ts` 在 planner 之後還有 commit、截圖基準重跑不符、全套有任何紅 → **FAIL**，不得以「只是截圖差一點」放行。
 
@@ -216,6 +217,7 @@ verifier 回報後，主 session **自己 Read 一張關鍵截圖**確認。
 2. 跑設定裡的 release 閘門（預設 plugin 的 `tools/release-check.sh`，需要 `node_modules`；裝不起來（如雲端掛載權限）就說明略過，改以專案零依賴的回歸腳本為準）。
 3. 建議使用者 tag 或 release：「dev 比 main 多 N 個 commit，建議 release vX.Y.Z」。沒聽到「release」不動 main。
 4. 彙整 `doc/pending-checks.md` 未勾項目給使用者。
+4a. 距上次優化報告（設定的「優化報告目錄」，預設 `doc/optimization/`）超過一週（或已跑完 3 波）→ 建議使用者跑 `task-workflow:workflow-optimization` 找這段時間最花時間的環節。
 5. 還沒做的任務在 `TODO.md` 標清楚（例如前綴「【尚未做】」或「待排程」），並把需要使用者決定的事（會改 PPTX／匯出基準、需舊檔遷移、規格有歧義）單獨列一段。
 
 **最終回報固定格式**（讓只看最後一則訊息的人也看得懂）：
@@ -271,6 +273,7 @@ merge 順序：文件 → 視覺 → 資料結構，衝突由主 session 解。v
 
 | 版號 | 日期 | 變更 |
 |---|---|---|
+| 1.12.0 | 2026-11-19 | 依 2026-11-13～19 對話紀錄耗時分析（workflow-optimization skill 首次）：一個 planner 只寫一項、多項平行派；verifier 改用 `tools/verify-clean.sh` 一次做完乾淨 checkout＋spec hash＋全套；硬規則 7 加「一波一個 session」、新增硬規則 10「主 session Bash 一次一個簡單指令」；波末建議定期跑 workflow-optimization |
 | 1.9.0 | 2026-11-05 | 步驟 3c 改派獨立 agent `planner-opus`（固定 opus）：規則移入 agent 定義，prompt 只寫任務本身；不再寫死 Playwright，依設定「測試指令」「驗收契約檔」；記錄並比對所有被改 spec 的 hash（來源：FolderScanner repo session 分析） |
 | 1.7.1 | 2026-10-28 | 步驟 6 補 ff merge 後核對（未追蹤檔會讓 ff 靜默 Aborting；刪分支前確認已含於 dev） |
 | 1.7.0 | 2026-10-27 | 測試先行：硬規則 8–9；步驟 3c 派 planner 寫 `tests/tasks/<代號>.spec.ts` 並證明在 dev 上先紅（量測斷言，不是只缺截圖）；步驟 4 worker 以 spec＋全套＋回歸全綠為完成、≤6 輪、每輪貼實際輸出、不得改 spec、hash 比對；步驟 5 verifier 從乾淨 checkout 重跑並拒收改 spec；步驟 6 只 ff 併入 dev；附錄 C 改為依檔案重疊分波與回報表 |

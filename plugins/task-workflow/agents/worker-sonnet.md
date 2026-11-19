@@ -22,6 +22,8 @@ model: sonnet
 ## Bash 指令規則（worktree 隔離守門）
 - **每次 Bash 呼叫只送一個簡單指令**：不要用 `&&`、`;`、`|` 把 cd／git／heredoc 串成一長串。隔離守門會把長串或含「git」字樣的 heredoc 判成「too complex to verify」整個擋下，重送更花時間。
 - 多步驟就拆成多次呼叫；需要寫檔用 Write／Edit 工具，不用 `cat <<EOF`。
+- 測試在前景跑、設 timeout（Bash 工具 timeout 參數）；**不要 `run_in_background` 再 `sleep`／`until` 輪詢**輸出檔。迭代時先跑本項契約（單檔），回報前再跑一次全套。
+- 直接啟動 headless Chrome 一律加 `--password-store=basic --use-mock-keychain`（否則 Linux 上啟動常卡約 25 秒等 keyring）。
 - git 指令單獨一行、不帶管線；看到「Another git process seems to be running」或 dubious ownership 時不要自己 rm 或改 config，回報主 session（plugin 的 PreToolUse 守護會處理殘留 lock）。
 
 ## 測試先行（TDD）契約
